@@ -1,134 +1,83 @@
-# vkQuake + RmlUI
+# ezQuake — Modern QuakeWorld Client
+Homepage: [https://ezquake.com][homepage]
 
-<p align="center">
-  <img width="600"
-       src="https://github.com/user-attachments/assets/489b35a4-bbca-4cb3-b55c-6483a5deafaa" />
-</p>
+Community discord: [http://discord.quake.world][discord]
 
-A [vkQuake](https://github.com/Novum/vkQuake) fork that replaces Quake's menu and HUD systems with a modern HTML/CSS UI layer powered by [RmlUI](https://github.com/mikke89/RmlUi). UI documents are hot-reloadable, scriptable with Lua, and fully overridable by mods. Ships with [LibreQuake](https://github.com/lavenderdotpet/LibreQuake) (BSD-licensed) as the base game content.
+This is the right place to start playing QuakeWorld&reg; — the fastest first
+person shooter action game ever.
+
+Combining the features of all modern QuakeWorld® clients, ezQuake makes
+QuakeWorld&reg; easier to start and play. The immortal first person shooter
+Quake&reg; in the brand new skin with superb graphics and extremely fast
+gameplay.
 
 ## Features
 
-**Declarative UI** — Menus and HUD written in RML (HTML dialect) and RCSS (CSS dialect), not C code
-- 50+ real-time data bindings connect engine state (health, weapons, armor, powerups) directly to UI elements
-- Two-way cvar sync for settings menus — sliders, toggles, and dropdowns stay in sync with the console
-- Hot reload with `ui_reload` and `ui_reload_css` — iterate on UI without restarting the engine
-- Built-in RmlUI debugger for inspecting the DOM and styles in real time
+ * Modern graphics
+ * [QuakeTV][qtv] support
+ * Rich menus
+ * Multiview support
+ * Tons of features to serve latest pro-gaming needs
+ * Built in server browser & MP3 player control
+ * Recorded games browser
+ * Customization of all possible graphics elements of the game including Heads Up Display
+ * All sorts of scripting possibilities
+ * Windows, Linux, MacOSX and FreeBSD platforms supported (SDL2).
 
-**Lua Scripting** — Add interactive behavior to any UI document without touching C++
-- Engine bridge API exposes game state, cvars, console commands, and per-frame callbacks
-- Full DOM manipulation — create elements, query selectors, set inline styles, toggle classes
-- Lua-backed data models that sync with RML data bindings
-- Scripts hot-reload alongside documents
+Our client comes only with bare minimum of game media. If you want to
+experience ezQuake with modern graphics and other additional media including
+custom configurations, maps, textures and more, try using the [nQuake][nQuake]-installer.
 
-**Custom Reticle Elements** — Procedural crosshairs built from `<reticle-dot>`, `<reticle-line>`, `<reticle-ring>`, and `<reticle-arc>` primitives
-- 7 animatable RCSS properties (radius, gap, length, width, stroke, start/end angle)
-- Weapon-reactive animations driven by RCSS transitions or Lua controllers
+## Support
 
-**Post-Process Pipeline** — UI composited as a separate render layer with configurable effects
-- Barrel warp, chromatic aberration, helmet display echo
-- HUD inertia — spring-damped bounce and sway responding to player movement
-- Normal or additive blending modes
+Need help with using ezQuake? Try #dev-corner on [discord][discord]
 
-**Mod-Friendly** — Mods override menus, HUD, styles, fonts, and scripts via standard Quake directory precedence
-- Fonts auto-discovered from `<mod>/ui/fonts/` at startup and on mod switch
-- Menu title auto-derived from mod directory name
-- Example mod included (`ui_lab`) with a terminal visor HUD
+Or (less populated these days) visit us on IRC at QuakeNet, channel #ezQuake: [webchat][webchat] or [IRC][IRC].
 
-**Vulkan Enhancements** — Beyond upstream vkQuake
-- Batched texture uploads, GPU timestamp instrumentation
-- `VK_KHR_synchronization2` and `VK_KHR_dynamic_rendering` support
+Sometimes help from other users of ezQuake might be more useful to you so you
+can also try visiting the [quakeworld.nu Client Talk-forums][forum].
 
-<p align="center">
-  <img width="600"
-       src="https://github.com/user-attachments/assets/fccf44b6-feac-4438-a05e-ca6b4172ca7e" />
-</p>
+If you have found a bug, please report it [here][issues]
 
-## Getting Started
+## Installation guide
 
-### Prerequisites
+To play Quakeworld you need the files *pak0.pak* and *pak1.pak* from the original Quake-game.
 
-**Arch Linux:**
-```bash
-sudo pacman -S cmake meson ninja sdl2 vulkan-devel glslang freetype2 lua
-```
+### Install ezQuake to an existing Quake-installation
+If you have an existing Quake-installation simply extract the ezQuake executable into your Quake-directory.
 
-**Ubuntu / Debian:**
-```bash
-sudo apt install build-essential cmake meson ninja-build \
-  libvulkan-dev vulkan-sdk libsdl2-dev libfreetype-dev liblua5.3-dev \
-  libvorbis-dev libopus-dev libopusfile-dev libflac-dev libmad0-dev
-```
+A typical error message when installing ezQuake into a pre-existing directory is about *glide2x.dll* missing.
+To get rid of this error, remove the file *opengl32.dll* from your Quake directory.
 
-**macOS:**
-```bash
-brew install cmake meson ninja sdl2 molten-vk vulkan-headers glslang freetype lua
-```
+### Upgrade an nQuake-installation
+If you have a version of [nQuake][nQuake] already installed you can upgrade ezQuake by extracting the new executable into the nQuake-directory.
 
-### Clone, Build, and Run
+### Minimal clean installation
+If you want to make a clean installation of ezQuake you can do this by following these steps:
 
-```bash
-git clone --recurse-submodules https://github.com/bradenleague/vkQuake-RmlUi.git
-cd vkQuake-RmlUi
-make setup   # check deps, init submodules, download LibreQuake PAK files
-make run     # build and launch
-```
+1. Create a new directory
+2. Extract the ezQuake-executable into this directory
+3. Create a subdirectory called *id1*
+4. Copy *pak0.pak* and *pak1.pak* into this subdirectory
 
-To run with a mod:
-```bash
-make run MOD_NAME=ui_lab
-```
+## Compiling
 
-### Build Targets
+On Linux, `./build-linux.sh` produces an ezQuake binary in the top directory. 
 
-| Command | Description |
-|---------|-------------|
-| `make` | Build everything (release) |
-| `make run` | Build and launch (`MOD_NAME=` to select mod) |
-| `make smoke` | Build and run for ~20 frames (CI smoke test) |
-| `make engine` | Rebuild engine only |
-| `make setup` | First-time setup (deps, submodules, PAK files) |
-| `make meson-setup` | Wipe and reconfigure meson |
-| `make clean` | Remove build artifacts |
-| `make distclean` | Remove build + downloaded assets |
+For a more in-depth description of how to build on all platforms, have a look at 
+[BUILD.md](BUILD.md).
 
-## Modding
+## Nightly builds
 
-Mods are directories at the project root, following the standard Quake convention. To create one:
+Nightly builds can be found [here][nightly]
 
-1. Create a directory (e.g. `mymod/`)
-2. Add UI overrides under `mymod/ui/` — RML documents, RCSS stylesheets, Lua scripts, and fonts
-3. Run with `make run MOD_NAME=mymod` or `./build/vkquake -game mymod`
-
-The engine searches `<mod>/ui/` first, falling back to the base `ui/` directory. Fonts in `<mod>/ui/fonts/` are loaded automatically.
-
-For a working example, see the `ui_lab/` mod and its [README](ui_lab/README.md).
-
-## UI Development
-
-UI files are runtime assets — edit and reload without rebuilding:
-
-| Console Command | Purpose |
-|---------|---------|
-| `ui_reload` | Hot reload all RML + RCSS from disk |
-| `ui_reload_css` | RCSS-only reload (preserves DOM state) |
-| `ui_debugger` | Toggle the RmlUI visual debugger |
-
-## Documentation
-
-| Guide | Contents |
-|-------|----------|
-| [RMLUI_INTEGRATION](docs/RMLUI_INTEGRATION.md) | Input handling, menu stack, data binding, event dispatch |
-| [DATA_CONTRACT](docs/DATA_CONTRACT.md) | Engine-to-UI data flow, all 50+ binding definitions |
-| [LUA_SCRIPTING](docs/LUA_SCRIPTING.md) | Lua API reference, engine bridge, example scripts |
-| [MOD_UI_GUIDE](docs/MOD_UI_GUIDE.md) | How to bundle custom UI with a mod |
-| [CVAR_BINDINGS](docs/CVAR_BINDINGS.md) | Two-way cvar sync reference |
-| [POST_PROCESS](docs/POST_PROCESS.md) | Post-process pipeline, HUD inertia physics |
-
-## License
-
-- **Engine + integration code:** GPL v2 (see [LICENSE](LICENSE))
-- **RmlUI:** MIT License
-- **LibreQuake:** BSD License
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.
+ [nQuake]: http://nquake.com/
+ [webchat]: http://webchat.quakenet.org/?channels=#ezquake
+ [IRC]: irc://irc.quakenet.org/#ezquake
+ [forum]: http://www.quakeworld.nu/forum/8
+ [qtv]: http://qtv.quakeworld.nu/
+ [nightly]: https://builds.quakeworld.nu/ezquake/snapshots/
+ [releases]: https://github.com/ezQuake/ezquake-source/releases
+ [issues]: https://github.com/ezQuake/ezquake-source/issues
+ [homepage]: https://ezquake.com
+ [discord]: http://discord.quake.world/

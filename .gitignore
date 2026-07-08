@@ -1,122 +1,23 @@
-# Base game assets (downloaded by setup.sh)
-id1/
+ezquake
+ezquake.exe
+ezquake-*.exe
+ezquake-*-*
+ezQuake.aps
+*.vcxproj*.user
+*.vcxproj*.cache
+SysPrintf.log
+.ezquake/
+.vs
+/.vscode
+*.json.c
+*.glsl.c
+vcpkg_installed/
+src/.msversion.h
+/build*/
 
-# Mod directories (cloned or dropped in at project root)
-# Standard Quake convention — each mod is its own directory
-rm1.2
-demo
-demo2
-demo3
-demo4
-ui_forge
+!.gitignore
 
-# Local-only docs
-docs/Demo_doc.md
-
-# Build directories
-build/
-build_*/
-cmake-build-*/
-out/
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
-.settings
-.project
-.cproject
-.cache/
-
-# Compiled binaries
-*.o
-*.a
-*.so
-*.dylib
-*.dll
-*.exe
-*.res
-
-# Legacy executables at project root
-vkquake
-quakespasm
-
-# Tools (downloaded/built separately — see README for setup)
-tools/
-
-# Compiled assets
-*.pak
-*.pk3
-progs.dat
-*.lno
-*.bsp
-*.lit
-
-# Meson
-.ninja_*
-meson-*
-subprojects/.wraplock
-
-# CMake (generated Makefiles, not our top-level one)
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-
-# SPIR-V compiled shaders (legacy — meson builds to build/)
-Shaders/*.spv
-
-# Generated files
-*.c.spv
-embedded_pak.c
-vkquake.pak
-
-# Visual Studio
-*.suo
-vkquake.VC*
-
-# Packaging
-Packaging/AppImage/AppDir
-Packaging/AppImage/linuxdeploy*.AppImage
-Packaging/AppImage/ninja
-Packaging/AppImage/vkquake*
-Packaging/Windows/vkQuake-Installer-*.exe
-Packaging/Windows/vkQuake*.zip
-
-# Misc build tools
-Misc/vq_pak/mkpak
-Misc/vq_pak/*.exe
-Misc/vq_pak/*.dSYM
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-
-# User-specific config
-config.cfg.local
-
-# Engine-saved config (vkQuake auto-saves to this file on exit)
-vkQuake.cfg
-
-# Python venv
-.venv/
-
-# Scratch/notes
-history.txt
-helgrind.log
-
-# Claude Code local settings (not shared)
-.claude/settings.local.json
-
-# Debug files
-*.dSYM/
-*.pdb
-
-# Test output
-test_results/
-test
-asym_hud
-brutalist
+# Local documentation files (not for repository)
+CR*.md
+EZQUAKE_HUD_*.md
+TRACKER_*.md

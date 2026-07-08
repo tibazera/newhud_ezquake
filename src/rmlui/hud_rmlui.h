@@ -1,0 +1,42 @@
+/*
+ * ezQuake RmlUI HUD bridge.
+ *
+ * C-facing API used by the engine. The implementation is C++ so RmlUI can be
+ * integrated without leaking C++ into the rest of ezQuake.
+ */
+
+#ifndef EZQUAKE_HUD_RMLUI_H
+#define EZQUAKE_HUD_RMLUI_H
+
+#include "cvar.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern cvar_t hud_newhudeditor;
+
+void HUD_RmlUi_Init(void);
+void HUD_RmlUi_Shutdown(void);
+void HUD_RmlUi_Frame(double dt);
+void HUD_RmlUi_Render(void);
+void HUD_RmlUi_Resize(int width, int height);
+
+void HUD_RmlUi_SyncGameState(
+	const int* stats,
+	int stats_count,
+	int items,
+	int intermission,
+	int gametype,
+	int maxclients,
+	const char* map_name,
+	double game_time);
+
+int HUD_RmlUi_IsEnabled(void);
+int HUD_RmlUi_ShouldDrawClassicHud(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* EZQUAKE_HUD_RMLUI_H */
