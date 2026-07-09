@@ -116,6 +116,31 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
+### 2026-07-09 - M3 real HUD document (code done, PENDING user acceptance)
+
+Commit `592155ac`. Design decision (user): modern text-first look.
+- LoadTexture over R_LoadImagePixels (VFS: tga/png/jpg from paks),
+  premultiplied upload - RML <img>/decorators now work for any shipped
+  image.
+- Centerprint push hooks in hud_centerprint.c (SCR_CenterPrint funnel);
+  notify lines polled from con.text/con_times with classic timing;
+  showscores/showteamscores bound.
+- New text-first ui/rml/hud/hud.rml (replaces legacy vkQuake-era doc):
+  trio armor/health/ammo with type colours, 8-slot weapon bar, per-type
+  ammo, frags, clock, fps/ping, speed, powerups/keys, centerprint,
+  notify, +showscores scoreboard from players[].
+- Default document is now hud.rml (hud_newhudeditor_doc).
+- Parity reference: docs/hud-element-registry.csv (84 elements; radar/
+  tracker/itemsclock/TP-teaminfo/groups deliberately post-M3).
+
+M3 acceptance test (user): run with hud_newhudeditor 1 -
+(a) full layout visible (trio bottom-center, weapon bar, ammo block
+bottom-right, clock top-right, speed bottom-left);
+(b) weapon bar highlights the active weapon and lights up owned ones;
+(c) centerprint messages appear centered and expire (~2s);
+(d) console/game messages appear top-left and fade after ~3s;
+(e) TAB (+showscores) shows the scoreboard with map name and players.
+
 ### 2026-07-09 - M2 ACCEPTED by the user on screen ("TUDO CERTO")
 
 Weapon labels/ammo switching, per-type ammo, speed, fps, clock, armor
