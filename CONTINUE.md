@@ -116,7 +116,25 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - M3 real HUD document (code done, PENDING user acceptance)
+### 2026-07-09 - COURSE CORRECTION from user feedback + M3.5 (PENDING acceptance)
+
+User rejected the text-first M3 look ("só texto, sem imagem... não to
+gostando") and asked about click-and-drag editing. Agreed replan:
+1. M3.5 NOW: classic-icon HUD - 162 original sbar graphics extracted from
+   the user's PAK0.PAK gfx.wad into ui/rml/hud/icons/ (offline Node
+   extractor: PACK -> WAD2 qpic lumps -> 32-bit TGA, palette + index-255
+   transparency). hud.rml v2 is icon-driven (inv/inv2 weapon pics, ammo
+   boxes, armor icons, health faces via derived face_icon, powerups/keys/
+   sigils). Model gained face_icon/ammo_icon/sigil1-4.
+2. NEXT: the drag editor (old M6) is PULLED FORWARD - input routing,
+   click-and-drag of HUD elements, layout persistence - before M4/M5.
+   For the user, "editable" means dragging on screen; treat it as core.
+
+M3.5 acceptance: icons visible everywhere (weapon bar with real pics,
+lit when active; face changes with health/powerups; ammo boxes; armor
+icon by type; powerup/key icons), plus everything that already passed.
+
+### 2026-07-09 - M3 real HUD document (superseded by M3.5 above)
 
 Commit `592155ac`. Design decision (user): modern text-first look.
 - LoadTexture over R_LoadImagePixels (VFS: tga/png/jpg from paks),
