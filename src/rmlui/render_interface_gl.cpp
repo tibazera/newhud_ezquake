@@ -406,6 +406,18 @@ Rml::TextureHandle RenderInterfaceGL::LoadTexture(
 	int width = 0;
 	int height = 0;
 	byte* pixels = R_LoadImagePixels(path, 0, 0, 0, &width, &height);
+	if (!pixels) {
+		/*
+		 * Iconset fallback: partial community packs (e.g. numbers-only)
+		 * only override some lumps; anything missing falls back to the
+		 * extracted classic set so the HUD never has holes.
+		 */
+		const char* base = strrchr(path, '/');
+		base = base ? base + 1 : path;
+		char fallback[MAX_OSPATH];
+		snprintf(fallback, sizeof(fallback), "ui/rml/hud/icons/%s", base);
+		pixels = R_LoadImagePixels(fallback, 0, 0, 0, &width, &height);
+	}
 	if (!pixels || width <= 0 || height <= 0) {
 		texture_dimensions = Rml::Vector2i(0, 0);
 		return 0;
