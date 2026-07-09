@@ -37,6 +37,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "hud.h"
 #include "hud_common.h"
 #include "hud_editor.h"
+#ifdef USE_RMLUI
+#include "rmlui/hud_rmlui.h"
+#endif
 #include "demo_controls.h"
 #include "irc.h"
 #include "qtv.h"
@@ -2010,7 +2013,14 @@ static qbool Mouse_EventDispatch(void)
 		case key_menu: 
 			mouse_handled = Menu_Mouse_Event(&scr_pointer_state);
 			break;
-		case key_hudeditor: 
+		case key_hudeditor:
+#ifdef USE_RMLUI
+			if (HUD_RmlUi_InEditorMode()) {
+				HUD_RmlUi_MouseEvent(&scr_pointer_state);
+				mouse_handled = true;
+				break;
+			}
+#endif
 			mouse_handled = HUD_Editor_MouseEvent(&scr_pointer_state);
 			break;
 		case key_demo_controls:
@@ -2172,6 +2182,12 @@ void Key_EventEx (int key, wchar unichar, qbool down)
 				}
 				break;
 			case key_hudeditor:
+#ifdef USE_RMLUI
+				if (HUD_RmlUi_InEditorMode()) {
+					HUD_RmlUi_EditorKey(key, unichar, down);
+					break;
+				}
+#endif
 				HUD_Editor_Key(key, unichar, down);
 				break;
 			case key_demo_controls:
@@ -2194,8 +2210,14 @@ void Key_EventEx (int key, wchar unichar, qbool down)
 	if (!down)
 	{
 		// Key up event.
-		if (key_dest == key_hudeditor) 
+		if (key_dest == key_hudeditor)
 		{
+#ifdef USE_RMLUI
+			if (HUD_RmlUi_InEditorMode()) {
+				HUD_RmlUi_EditorKey(key, unichar, down);
+			}
+			else
+#endif
 			HUD_Editor_Key(key, unichar, down);
 		}
 		else if (key_dest == key_demo_controls)
@@ -2312,6 +2334,12 @@ void Key_EventEx (int key, wchar unichar, qbool down)
 			break;
 
 		case key_hudeditor:
+#ifdef USE_RMLUI
+			if (HUD_RmlUi_InEditorMode()) {
+				HUD_RmlUi_EditorKey(key, unichar, down);
+				break;
+			}
+#endif
 			HUD_Editor_Key(key, unichar, down);
 			break;
 

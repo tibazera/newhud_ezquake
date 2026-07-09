@@ -58,6 +58,20 @@ int HUD_RmlUi_ShouldDrawClassicHud(void);
 void HUD_RmlUi_CenterPrint(const char* str);
 void HUD_RmlUi_CenterPrintClear(void);
 
+/*
+ * Editor mode (hud_newhudeditor 2): drag-and-drop layout editing.
+ * Input arrives through the classic key_hudeditor routing:
+ *  - HUD_RmlUi_MouseEvent from Mouse_EventDispatch (keys.c), receives the
+ *    global mouse_state_t (cast as void* to keep this header light).
+ *  - HUD_RmlUi_EditorKey from Key_EventEx's key_hudeditor cases; handles
+ *    ESC (exit to mode 1) and the mouse wheel keynums.
+ * HUD_RmlUi_InEditorMode tells keys.c whether to route to us instead of
+ * the classic HUD_Editor.
+ */
+void HUD_RmlUi_MouseEvent(void* mouse_state);
+void HUD_RmlUi_EditorKey(int key, int unichar, int down);
+int HUD_RmlUi_InEditorMode(void);
+
 #ifdef __cplusplus
 }
 #endif

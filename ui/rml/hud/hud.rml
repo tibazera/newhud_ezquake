@@ -129,6 +129,27 @@
         #scores .tm { display: inline-block; width: 90px; color: #b0b0b0; }
         #scores .pi { display: inline-block; width: 60px; color: #b0b0b0; text-align: right; }
         .specrow { color: #808080; }
+
+        /* ---- edit mode (hud_newhudeditor_edit) ---- */
+        #edithint { display: none; }
+        body.edit #edithint {
+            display: block;
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            margin-left: -220px;
+            width: 440px;
+            text-align: center;
+            font-size: 16dp;
+            font-weight: bold;
+            color: #ffe080;
+            background-color: #000000b0;
+            border-radius: 4px;
+            padding: 6px 0;
+        }
+        body.edit > div {
+            border: 1dp #60a0ff90;
+        }
     </style>
 </head>
 
@@ -139,6 +160,8 @@
     the weapon strip and mini ammo counts above, items to the right.
 -->
 <body data-model="hud">
+
+    <div id="edithint">MODO EDIÇÃO — arraste os elementos · ESC para sair</div>
 
     <div id="notify">
         <div class="nline" data-for="line : notify_lines">{{ line }}</div>
