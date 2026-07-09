@@ -116,6 +116,25 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
+### 2026-07-09 - DRAG EDITOR shipped (hud_newhudeditor 2, PENDING acceptance)
+
+Commit `dbe045e3`. The drag-and-drop editor, pulled forward by user
+request. Reuses the classic hud_editor input plumbing (key_dest =
+key_hudeditor -> mouse tracking/cursor/game-block for free): keys.c's
+key_hudeditor dispatch sites route to the RmlUI bridge when
+HUD_RmlUi_InEditorMode(). Mouse1 grabs the top-level element under the
+cursor (frozen at its absolute position, anchors neutralised), drag pins
+left/top, drop saves. Layout persists in rmlui_hud_layout.cfg (game dir,
+"id x y" lines) and is applied on every document load. ESC exits to mode
+1. hud.rml shows outlines + an instruction banner in edit mode.
+
+How to use: `hud_newhudeditor_edit` in the console (needs the HUD live) -
+drag the blocks - ESC. To reset a layout, delete rmlui_hud_layout.cfg.
+
+Known limits (next iterations): no snapping/grid, no keyboard nudge, no
+per-element hide toggle, scoreboard/centerprint drag while invisible not
+possible (they only exist when shown).
+
 ### 2026-07-09 - M3.5 v3: faithful classic sbar (PENDING acceptance)
 
 User: "o HUD tá pior que o original". Fix round (commit `9efecf00`):
