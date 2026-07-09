@@ -1016,7 +1016,9 @@ void SCR_UpdateScreenHudOnly(void)
 	if (r_drawhud.integer) {
 		R_TraceEnterNamedRegion("HUD");
 #ifdef USE_RMLUI
-		HUD_RmlUi_Resize(vid.width, vid.height);
+		/* Use the engine 2D space (conwidth/conheight) so the HUD shares
+		 * coordinates with everything else and the mouse cursor. */
+		HUD_RmlUi_Resize(vid.conwidth, vid.conheight);
 		HUD_RmlUi_SyncGameState();
 #endif
 		if (scr_newHud.value != 1

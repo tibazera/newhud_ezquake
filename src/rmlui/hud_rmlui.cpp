@@ -239,6 +239,9 @@ void ApplyElementPosition(Rml::Element* element, float x, float y)
 	element->SetProperty("bottom", "auto");
 	element->SetProperty("margin-left", "0");
 	element->SetProperty("margin-top", "0");
+	/* Some widgets center via transform: translateX(-50%); once pinned to
+	 * absolute px that must be cleared or it would shift the element. */
+	element->SetProperty("transform", "none");
 }
 
 /* Draggable HUD widgets are the top-level elements whose id starts with
@@ -448,6 +451,10 @@ void EnsureContext()
 
 	g_hud.context = Rml::CreateContext("hud", Rml::Vector2i(g_hud.width, g_hud.height));
 	if (g_hud.context) {
+		/* Density-independent px: author the HUD against a 480-tall
+		 * reference so dp sizes stay physically consistent across any
+		 * conheight the player's cfg sets. */
+		g_hud.context->SetDensityIndependentPixelRatio(g_hud.height / 480.0f);
 		Com_Printf("RmlUI HUD: context created (%dx%d)\n", g_hud.width, g_hud.height);
 		if (!ezquake::rmlui::GameDataCreate(g_hud.context)) {
 			Com_Printf("RmlUI HUD: ERROR failed to create data model\n");
@@ -634,6 +641,7 @@ void HUD_RmlUi_Resize(int width, int height)
 
 	if (g_hud.context) {
 		g_hud.context->SetDimensions(Rml::Vector2i(width, height));
+		g_hud.context->SetDensityIndependentPixelRatio(height / 480.0f);
 	}
 }
 

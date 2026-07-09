@@ -249,6 +249,10 @@ void RenderInterfaceGL::BeginFrame(int view_width, int view_height)
 	glGetIntegerv(GL_UNPACK_ALIGNMENT, &saved_.unpack_alignment);
 
 	viewport_height_ = saved_.viewport[3];
+	/* The context is sized in the engine's 2D space (conwidth/conheight);
+	 * scale scissor rects from that space to real framebuffer pixels. */
+	scale_x_ = (view_width > 0) ? (float)saved_.viewport[2] / (float)view_width : 1.0f;
+	scale_y_ = (view_height > 0) ? (float)saved_.viewport[3] / (float)view_height : 1.0f;
 
 	// Our 2D state.
 	glDisable(GL_DEPTH_TEST);
@@ -504,9 +508,13 @@ void RenderInterfaceGL::EnableScissorRegion(bool enable)
 
 void RenderInterfaceGL::SetScissorRegion(Rml::Rectanglei region)
 {
-	// RmlUi region is top-left origin; GL scissor is bottom-left.
-	const int y = viewport_height_ - (region.Top() + region.Height());
-	glScissor(region.Left(), y, region.Width(), region.Height());
+	// Region is in context (conwidth) space, top-left origin; convert to
+	// framebuffer pixels and flip Y for GL's bottom-left scissor.
+	const int x = (int)(region.Left() * scale_x_ + 0.5f);
+	const int w = (int)(region.Width() * scale_x_ + 0.5f);
+	const int h = (int)(region.Height() * scale_y_ + 0.5f);
+	const int top = (int)(region.Top() * scale_y_ + 0.5f);
+	glScissor(x, viewport_height_ - (top + h), w, h);
 }
 
 void RenderInterfaceGL::Shutdown()

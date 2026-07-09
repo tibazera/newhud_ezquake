@@ -80,6 +80,8 @@ private:
 	int u_translation_ = -1;
 	int u_projection_ = -1;
 	int viewport_height_ = 0;        // GL framebuffer height, for scissor Y-flip
+	float scale_x_ = 1.0f;           // context (conwidth) -> framebuffer pixels
+	float scale_y_ = 1.0f;
 
 	// Saved GL state between BeginFrame()/EndFrame(). Restoration must be
 	// EXACT: ezQuake caches GL state (gl_state.c, opengl.rendering_state)
