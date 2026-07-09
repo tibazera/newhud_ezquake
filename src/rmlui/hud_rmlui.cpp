@@ -210,6 +210,13 @@ void ApplyElementPosition(Rml::Element* element, float x, float y)
 	element->SetProperty("margin-top", "0");
 }
 
+/* Draggable HUD widgets are the top-level elements whose id starts with
+ * "w_"; overlays (picker, edit hint) are excluded. */
+bool IsWidgetId(const Rml::String& id)
+{
+	return id.size() > 2 && id[0] == 'w' && id[1] == '_';
+}
+
 void SaveLayout()
 {
 	if (!g_hud.document) {
@@ -220,7 +227,7 @@ void SaveLayout()
 	for (int i = 0; i < g_hud.document->GetNumChildren(); ++i) {
 		Rml::Element* child = g_hud.document->GetChild(i);
 		const Rml::String& id = child->GetId();
-		if (id.empty()) {
+		if (!IsWidgetId(id)) {
 			continue;
 		}
 		const Rml::Vector2f pos = child->GetAbsoluteOffset(Rml::BoxArea::Border);
@@ -297,7 +304,7 @@ Rml::Element* TopLevelFor(Rml::Element* element)
 void EditorStartDrag(float mx, float my)
 {
 	Rml::Element* top = TopLevelFor(g_hud.context->GetHoverElement());
-	if (!top || top->GetId().empty()) {
+	if (!top || !IsWidgetId(top->GetId())) {
 		return;
 	}
 
@@ -616,7 +623,9 @@ void HUD_RmlUi_MouseEvent(void* mouse_state)
 void HUD_RmlUi_EditorKey(int key, int unichar, int down)
 {
 	(void)unichar;
-	if (!g_hud.initialized || !EditorModeEnabled() || !g_hud.context) {
+	/* Active for both the drag editor and the (mode-1) style picker. */
+	if (!g_hud.initialized || !g_hud.context ||
+		!(EditorModeEnabled() || g_editor.picker_open)) {
 		return;
 	}
 	if (!down) {
