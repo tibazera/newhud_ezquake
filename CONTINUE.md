@@ -116,7 +116,12 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - M2 GameDataModel complete (code done, PENDING user acceptance)
+### 2026-07-09 - M2 ACCEPTED by the user on screen ("TUDO CERTO")
+
+Weapon labels/ammo switching, per-type ammo, speed, fps, clock, armor
+colours and powerups all verified live. Next: M3 (real HUD documents).
+
+### 2026-07-09 - M2 GameDataModel complete (accepted above)
 
 Commits `eaa2a611` (FILEVERSION fix) + M2 feature commit. The "hud" data
 model now carries the full contract in src/rmlui/game_data_model.*:
