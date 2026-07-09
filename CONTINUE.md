@@ -116,7 +116,17 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - HUD packs downloaded & installed for the user (PENDING accept.)
+### 2026-07-09 - VISUAL STYLE PICKER with live preview (PENDING acceptance)
+
+Commit `d6fa4048`. In-game gallery replacing console cvar juggling:
+`hud_newhudeditor_style` opens cards for every installed iconset (scanned
+from <basedir>/{id1,qw}/hudpacks + Classic), each showing real samples.
+HOVER previews the whole HUD live with that set (iconpath binding
+re-resolves every image instantly, no reload); CLICK applies the cvar;
+ESC/Fechar closes. Active set marked. Input reuses the key_hudeditor
+routing; drag suppressed while picker open.
+
+### 2026-07-09 - HUD packs downloaded & installed for the user (earlier)
 
 Commit `343f7c4d` (fallback). Downloaded the 4 requested packs from
 gfx.quakeworld.nu, extracted (incl. foogs' pk3) and installed them
