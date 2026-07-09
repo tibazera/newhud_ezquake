@@ -116,7 +116,18 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - VISUAL STYLE PICKER with live preview (PENDING acceptance)
+### 2026-07-09 - Feedback: ESC fix, picker fits, per-element widgets (PENDING)
+
+Commit `3f73e776`. (1) ESC now exits the style picker (its key handler
+was gated on edit-mode only; picker runs at mode 1). (2) Picker cards
+shrunk + wrap, panel max-height/overflow so it no longer escapes the
+screen. (3) hud.rml restructured: every element is an independent
+top-level widget id "w_*"; the drag editor + layout persistence only
+touch "w_*" ids, so each element drags/saves separately. Old
+rmlui_hud_layout.cfg (pre-rename ids) is stale-safe (skipped) and was
+cleared from the test dir.
+
+### 2026-07-09 - VISUAL STYLE PICKER with live preview (earlier)
 
 Commit `d6fa4048`. In-game gallery replacing console cvar juggling:
 `hud_newhudeditor_style` opens cards for every installed iconset (scanned
