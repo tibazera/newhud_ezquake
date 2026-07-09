@@ -81,7 +81,10 @@ private:
 	int u_projection_ = -1;
 	int viewport_height_ = 0;        // GL framebuffer height, for scissor Y-flip
 
-	// Saved GL state between BeginFrame()/EndFrame().
+	// Saved GL state between BeginFrame()/EndFrame(). Restoration must be
+	// EXACT: ezQuake caches GL state (gl_state.c, opengl.rendering_state)
+	// and skips redundant calls, so any raw state we leave changed behind
+	// its back desyncs the cache and corrupts subsequent engine rendering.
 	struct SavedState {
 		int program;
 		int vertex_array;
@@ -90,6 +93,9 @@ private:
 		int active_texture;
 		int texture_2d;
 		unsigned char blend, depth, cull, scissor;
+		int blend_src_rgb, blend_dst_rgb, blend_src_alpha, blend_dst_alpha;
+		int scissor_box[4];
+		int unpack_alignment;
 		int viewport[4];
 	} saved_{};
 };

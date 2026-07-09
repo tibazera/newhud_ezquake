@@ -49,6 +49,7 @@ PFNGLUNIFORMMATRIX4FVPROC       qglUniformMatrix4fv = nullptr;
 PFNGLUNIFORM2FPROC              qglUniform2f = nullptr;
 PFNGLUNIFORM1IPROC              qglUniform1i = nullptr;
 PFNGLACTIVETEXTUREPROC          qglActiveTexture = nullptr;
+PFNGLBLENDFUNCSEPARATEPROC      qglBlendFuncSeparate = nullptr;
 
 bool g_gl_loaded = false;
 
@@ -92,6 +93,7 @@ bool LoadGLFunctions()
 	ok &= Load(qglUniform2f, "glUniform2f");
 	ok &= Load(qglUniform1i, "glUniform1i");
 	ok &= Load(qglActiveTexture, "glActiveTexture");
+	ok &= Load(qglBlendFuncSeparate, "glBlendFuncSeparate");
 	g_gl_loaded = ok;
 	return ok;
 }
@@ -196,13 +198,18 @@ bool RenderInterfaceGL::EnsureInitialised()
 	u_translation_ = qglGetUniformLocation(program_, "u_translation");
 
 	// 1x1 opaque white texture used when geometry carries no texture.
+	// Restore whatever texture was bound: this may run outside the
+	// BeginFrame/EndFrame save window and must not desync the engine's
+	// texture-binding cache.
+	GLint prev_texture = 0;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_texture);
 	const unsigned char white[4] = {255, 255, 255, 255};
 	glGenTextures(1, &white_texture_);
 	glBindTexture(GL_TEXTURE_2D, white_texture_);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(prev_texture));
 
 	initialised_ = true;
 	Com_Printf("RmlUI GL: render interface initialised\n");
@@ -227,6 +234,12 @@ void RenderInterfaceGL::BeginFrame(int view_width, int view_height)
 	saved_.depth = glIsEnabled(GL_DEPTH_TEST);
 	saved_.cull = glIsEnabled(GL_CULL_FACE);
 	saved_.scissor = glIsEnabled(GL_SCISSOR_TEST);
+	glGetIntegerv(GL_BLEND_SRC_RGB, &saved_.blend_src_rgb);
+	glGetIntegerv(GL_BLEND_DST_RGB, &saved_.blend_dst_rgb);
+	glGetIntegerv(GL_BLEND_SRC_ALPHA, &saved_.blend_src_alpha);
+	glGetIntegerv(GL_BLEND_DST_ALPHA, &saved_.blend_dst_alpha);
+	glGetIntegerv(GL_SCISSOR_BOX, saved_.scissor_box);
+	glGetIntegerv(GL_UNPACK_ALIGNMENT, &saved_.unpack_alignment);
 
 	viewport_height_ = saved_.viewport[3];
 
@@ -273,6 +286,21 @@ void RenderInterfaceGL::EndFrame()
 	if (saved_.cull) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
 	if (saved_.blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
 	if (saved_.scissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+
+	/*
+	 * Values the engine's state cache believes are still set: blend func
+	 * (we switched to premultiplied), scissor rectangle (RmlUi regions)
+	 * and unpack alignment (texture uploads). Restoring the exact prior
+	 * values keeps gl_state.c's cache coherent.
+	 */
+	qglBlendFuncSeparate(
+		static_cast<GLenum>(saved_.blend_src_rgb),
+		static_cast<GLenum>(saved_.blend_dst_rgb),
+		static_cast<GLenum>(saved_.blend_src_alpha),
+		static_cast<GLenum>(saved_.blend_dst_alpha));
+	glScissor(saved_.scissor_box[0], saved_.scissor_box[1],
+		saved_.scissor_box[2], saved_.scissor_box[3]);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, saved_.unpack_alignment);
 }
 
 Rml::CompiledGeometryHandle RenderInterfaceGL::CompileGeometry(
