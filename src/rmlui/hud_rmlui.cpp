@@ -527,11 +527,23 @@ void HUD_RmlUi_Init(void)
 
 	LoadFonts();
 
+	/* Register in the HUD cvar group so cfg_save persists the player's
+	 * style/document choice into their config (ungrouped cvars are not
+	 * dumped). hud_newhudeditor itself is grouped in hud.c. */
+	Cvar_SetCurrentGroup(CVAR_GROUP_HUD);
 	Cvar_Register(&hud_newhudeditor_doc);
 	Cvar_Register(&hud_newhudeditor_iconset);
+	Cvar_ResetCurrentGroup();
+
 	Cmd_AddCommand("hud_newhudeditor_reload", HUD_RmlUi_Reload_f);
 	Cmd_AddCommand("hud_newhudeditor_edit", HUD_RmlUi_Edit_f);
 	Cmd_AddCommand("hud_newhudeditor_style", HUD_RmlUi_Style_f);
+
+	/* A saved value of 2 (edit mode) should not resurrect the editor on
+	 * startup - the input routing is not set up here. Treat it as on. */
+	if (hud_newhudeditor.integer == 2) {
+		Cvar_SetValue(&hud_newhudeditor, 1);
+	}
 
 	g_hud.initialized = true;
 	Com_Printf("RmlUI HUD: initialised (RmlUi %s). Set hud_newhudeditor 1 to use it.\n",
