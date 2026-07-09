@@ -1004,7 +1004,7 @@ void SCR_UpdateScreenHudOnly(void)
 		if (r_drawhud.integer != 2) {
 			R_FlushImageDraw();
 #ifdef USE_RMLUI
-			HUD_RmlUi_Frame(host_frametime);
+			HUD_RmlUi_Frame(cls.frametime);
 			HUD_RmlUi_Render();
 #endif
 		}

@@ -34,9 +34,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define wchar unsigned short	// 16-bit Unicode char
 
+#ifdef __cplusplus
+/*
+ * In C++ true/false are keywords, so the enum below is illegal. Use int to
+ * keep the exact ABI of the C enum (sizeof == sizeof(int)) for structs and
+ * function signatures shared across the C/C++ boundary (USE_RMLUI).
+ */
+typedef int qbool;
+#else
 #undef true
 #undef false
 typedef enum {false, true} qbool;
+#endif
 
 #include "mathlib.h"
 #include "sys.h"

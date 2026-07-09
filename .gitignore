@@ -15,6 +15,9 @@ vcpkg_installed/
 src/.msversion.h
 /build*/
 
+# Unrelated project checked out inside this working copy by mistake
+/aiox-core/
+
 !.gitignore
 
 # Local documentation files (not for repository)
