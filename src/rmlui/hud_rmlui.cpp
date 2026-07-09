@@ -55,10 +55,12 @@ struct RmlHudState {
 	int maxclients = 0;
 	double game_time = 0.0;
 	char map_name[64] = {0};
+	Rml::String map_name_str; // bindable mirror of map_name for the data model
 
 	SystemInterfaceEz* system_interface = nullptr;
 	ezquake::rmlui::RenderInterfaceGL* render_interface = nullptr;
 	Rml::Context* context = nullptr;
+	Rml::DataModelHandle data_model;
 };
 
 RmlHudState g_hud;
@@ -73,6 +75,33 @@ bool ClassicModeEnabled()
 	return !RmlModeEnabled();
 }
 
+void CreateGameDataModel()
+{
+	/*
+	 * GameDataModel: exposes the synced game state to RML documents as the
+	 * "hud" data model, so markup can read {{health}}, {{armor}}, etc.
+	 * Bound directly to the RmlHudState fields (global lifetime).
+	 */
+	Rml::DataModelConstructor constructor = g_hud.context->CreateDataModel("hud");
+	if (!constructor) {
+		Com_Printf("RmlUI HUD: ERROR failed to create data model\n");
+		return;
+	}
+
+	constructor.Bind("health", &g_hud.health);
+	constructor.Bind("armor", &g_hud.armor);
+	constructor.Bind("ammo", &g_hud.ammo);
+	constructor.Bind("weapon", &g_hud.active_weapon);
+	constructor.Bind("items", &g_hud.items);
+	constructor.Bind("intermission", &g_hud.intermission);
+	constructor.Bind("gametype", &g_hud.gametype);
+	constructor.Bind("maxclients", &g_hud.maxclients);
+	constructor.Bind("time", &g_hud.game_time);
+	constructor.Bind("map", &g_hud.map_name_str);
+
+	g_hud.data_model = constructor.GetModelHandle();
+}
+
 void EnsureContext()
 {
 	if (g_hud.context || !g_hud.initialized || g_hud.width <= 0 || g_hud.height <= 0) {
@@ -82,6 +111,7 @@ void EnsureContext()
 	g_hud.context = Rml::CreateContext("hud", Rml::Vector2i(g_hud.width, g_hud.height));
 	if (g_hud.context) {
 		Com_Printf("RmlUI HUD: context created (%dx%d)\n", g_hud.width, g_hud.height);
+		CreateGameDataModel();
 	}
 	else {
 		Com_Printf("RmlUI HUD: ERROR failed to create context\n");
@@ -144,7 +174,10 @@ void HUD_RmlUi_Frame(double dt)
 
 	EnsureContext();
 	if (g_hud.context) {
-		/* Future: push GameDataModel updates before Update(). */
+		/* Publish the latest synced game state to the data model. */
+		if (g_hud.data_model) {
+			g_hud.data_model.DirtyAllVariables();
+		}
 		g_hud.context->Update();
 	}
 }
@@ -197,6 +230,7 @@ void HUD_RmlUi_SyncGameState(
 
 	if (map_name) {
 		strlcpy(g_hud.map_name, map_name, sizeof(g_hud.map_name));
+		g_hud.map_name_str = g_hud.map_name;
 	}
 
 	if (STAT_HEALTH < stats_count) {
