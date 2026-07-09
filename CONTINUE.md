@@ -136,6 +136,16 @@ Commits `df353bbe` (code) + submodule gitlinks commit. All five M1 items:
    centerprint/intermission intentionally keep drawing.
 5. Submodule gitlinks restored (src/qwprot @ master, vcpkg @ 2026.06.24).
 
+M1 fix round 1 (commit `3ba4f86f`): user reported all-black screen after
+maximizing. Root cause class: ezQuake caches GL state (gl_state.c,
+opengl.rendering_state) and skips redundant GL calls; our pass changed raw
+state the cache did not know about. EndFrame restored enables/bindings but
+NOT the blend function (premultiplied), scissor rect or unpack alignment -
+now all saved/restored exactly (glBlendFuncSeparate). White-texture creation
+also restores the previously bound texture. LESSON for all future GL work
+here: every raw GL change must be restored EXACTLY, or the engine's state
+cache desyncs and skips its own re-sets.
+
 M1 acceptance test (user, on screen): with hud_newhudeditor 1 -
 (a) classic bottom status bar must be GONE (only the RmlUI panel);
 (b) vid_restart in the console -> no crash, HUD comes back;
