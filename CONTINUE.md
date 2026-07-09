@@ -116,7 +116,23 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - Split face/life/clock/fps into separate widgets (PENDING)
+### 2026-07-09 - CRITICAL FIX: render in conwidth space (PENDING acceptance)
+
+Commit `39816d7d`. User loaded their real cfg (vid_conwidth 640 /
+vid_conheight 360) and the HUD went "extremely misconfigured, nothing to
+drag". Root cause: ezQuake's whole 2D layer AND the mouse cursor
+(scr_pointer_state, scaled to conwidth in SCR_UpdateCursor) live in
+conwidth/conheight space, but the HUD context was sized in real
+framebuffer px (vid.width/height). Fix: feed HUD_RmlUi_Resize
+vid.conwidth/vid.conheight; set context DensityIndependentPixelRatio =
+conheight/480; render interface scales scissor rects from context space
+to framebuffer px (scale_x/y from GL viewport); hud.rml rewritten
+resolution-independent (%, dp, transform centering; drag clears the
+transform). Lesson: anything sharing input/coords with ezQuake's 2D must
+use conwidth/conheight, never vid.width/height. NOTE: exe must be
+recopied to E:\trabalho\quake (was locked by the running game).
+
+### 2026-07-09 - Split face/life/clock/fps into separate widgets (earlier)
 
 Commit `d38daf8f`. User (with the classic-HUD reference screenshot):
 separate armor/face/life/ammo and clock/fps. w_face split from w_health,
