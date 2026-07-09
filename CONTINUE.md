@@ -271,27 +271,61 @@ Use the old HUD system as a compatibility map:
 
 Helper: `powershell -ExecutionPolicy Bypass -File .\tools\extract_ezquake_hud_registers.ps1 -Csv`
 
-## Suggested Next Steps
+## Milestone Roadmap (agreed 2026-07-09)
 
-1. DONE (2026-07-09): visual verification passed - see Progress Log.
+Goal restated: the proposal is only "done" when the RmlUI HUD can genuinely
+replace the classic HUD in real play, and later the editor. Quality-first: each
+milestone has acceptance criteria and gets on-screen verification by the user
+before moving on. No shortcuts.
 
-2. Gate the classic/new HUD on `!HUD_RmlUi_ShouldDrawClassicHud()` in
-   `cl_screen.c` (`SCR_DrawNewHudElements` / `SCR_DrawElements`) so the new HUD
-   can be shown alone. Currently both draw simultaneously.
+### M1 - Harden the foundation (robustness, not features)
+1. Survive `vid_restart`/GL context recreation: RenderInterfaceGL must
+   invalidate and recreate its shader/VAOs/textures (currently they become
+   dead handles -> crash/corruption risk). Most serious latent bug.
+2. Wire `HUD_RmlUi_Shutdown()` into the engine shutdown path (Host_Shutdown).
+3. RmlUi FileInterface over ezQuake's VFS (`FS_OpenVFS`/`VFS_READ`/...), so
+   RML/RCSS/fonts load from the game filesystem/paks instead of cwd-relative.
+4. Gate `SCR_DrawNewHudElements`/`SCR_DrawElements` in `cl_screen.c` on
+   `!HUD_RmlUi_ShouldDrawClassicHud()` (carefully - console/menus stay).
+5. Repo hygiene: restore proper submodule gitlinks for src/qwprot and vcpkg.
+Accept: resolution/fullscreen switch with HUD on = no crash; ui/ loads from
+game dir; `hud_newhudeditor 1` shows ONLY the new HUD.
 
-4. FileInterface over ezQuake's VFS (`FS_OpenVFS` / `VFS_READ` / ...), so fonts
-   and RML load from the game filesystem/paks instead of cwd-relative paths.
+### M2 - Complete GameDataModel (the data contract)
+Full field set using qw-webhud PROTOCOL.md as the checklist: armor_type,
+per-type ammo (shells/nails/rockets/cells), owned-weapons bitmask + has_*
+flags, active weapon with derived label, items/powerups (quad/pent/ring/suit/
+keys/sigils), match state (countdown/standby/intermission, formatted time,
+gametype), player (name/team/frags), scoreboard player array, teaminfo, speed,
+clock, ping/packetloss/fps. One derived-semantics layer (raw + derived like
+weapon_label/armor_class). Correct dirty tracking (only what changed - not
+DirtyAllVariables every frame).
+Accept: every field the legacy hud.rml expects exists and updates in real play.
 
-5. Expand the GameDataModel to the full field set the legacy `ui/rml/hud/hud.rml`
-   expects (armor_type, per-type ammo shells/nails/rockets/cells, weapon
-   ownership flags, notify lines, level stats, speed, clock). Use qw-webhud
-   PROTOCOL.md as the checklist. Then switch the default document to hud.rml.
+### M3 - Real HUD documents
+`LoadTexture` via the VFS file interface (icons/images for <img>/decorators);
+asset-strategy decision (classic pak graphics vs. own assets in ui/); rebuild
+`ui/rml/hud/hud.rml` against the M2 model with element-by-element parity vs.
+the classic HUD_Register registry (tools/extract_ezquake_hud_registers.ps1);
+notify/centerprint documents.
+Accept: play a full match with only the new HUD and miss nothing.
 
-6. Wire `RenderInterfaceGL::LoadTexture` for external image files (via the VFS
-   file interface), for RML `<img>`/`decorator: image(...)`.
+### M4 - Real-play validation + performance
+Multiplayer, MVD/QTV demo playback, spectator, multiview. Frame-cost
+measurement (confirm compiled geometry is cached across frames). Edge cases:
+conwidth/console scaling, DPI, alt-tab, in-game resolution changes.
+Accept: no perceptible FPS regression; stable in all play modes.
 
-7. Input routing / editor: only after the runtime HUD is solid, design the RmlUI
-   replacement for the visual `hud_editor`.
+### M5 - Config integration
+Cvar persistence in configs, layout/document selection, sane defaults,
+cfg_save compatibility.
+Accept: settings survive client restart and cfg_save/cfg_load.
+
+### M6 - The editor (only after M1-M4 are solid)
+Input routing (mouse/keyboard to RmlUI in editor mode, preserving
+Escape/console semantics); RmlUI editing UI (select/drag elements, property
+panel, save layout spec); importer for classic hud_* cvars.
+Accept: the old hud_editor can be retired.
 
 ## Warnings
 
