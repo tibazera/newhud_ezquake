@@ -116,7 +116,19 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - Feedback round: dedup, scoreboard v2, iconsets (PENDING accept.)
+### 2026-07-09 - HUD packs downloaded & installed for the user (PENDING accept.)
+
+Commit `343f7c4d` (fallback). Downloaded the 4 requested packs from
+gfx.quakeworld.nu, extracted (incl. foogs' pk3) and installed them
+normalized (flat, lowercase) into E:\trabalho\quake\ID1\hudpacks\
+{bugs5 24f, gnoffa 71f, foogs 85f, starjedi 25f}. LoadTexture gained an
+iconset fallback: lumps missing from the active set fall back to the
+classic extracted icons, so numbers-only packs work without holes.
+Third-party art stays in the user's game dir only (not committed).
+Switch via console: hud_newhudeditor_iconset "/hudpacks/<name>/" +
+hud_newhudeditor_reload. Classic: "/ui/rml/hud/icons/".
+
+### 2026-07-09 - Feedback round: dedup, scoreboard v2, iconsets (earlier)
 
 Commit `f1589709`, answering user feedback (score ruim / AXE em texto /
 informações duplicadas ao entrar em servidor / quer HUDs alternativos):
