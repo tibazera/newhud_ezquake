@@ -249,28 +249,8 @@
 
     <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
 
-    <div id="w_scores" class="widget" data-if="showscores">
-        <span class="shead">
-            <span class="title">{{ map_title }}</span>
-            <span class="subtitle">{{ map }} &nbsp;·&nbsp; {{ match_time }}</span>
-        </span>
-        <span class="cols">
-            <span class="col-fr">FRAGS</span>
-            <span class="col-pn">PLAYER</span>
-            <span class="col-pi">PING</span>
-            <span class="col-plc">PL</span>
-        </span>
-        <span class="body">
-            <div class="prow" data-for="p : players" data-class-specrow="p.spectator">
-                <span class="accent" data-style-background-color="p.tcolor"></span>
-                <span class="fr" data-style-color="p.bcolor" data-if="!p.spectator">{{ p.frags }}</span>
-                <span class="fr" data-if="p.spectator">S</span>
-                <span class="pn">{{ p.name }}</span>
-                <span class="pi">{{ p.ping }}</span>
-                <span class="plc">{{ p.pl }}</span>
-            </div>
-        </span>
-    </div>
+    <!-- Scoreboard (TAB), team overlay and kill feed use the proven
+         classic ezQuake drawing (kept via the cl_screen.c gate). -->
 
     <!-- edit-mode config panel: show/hide each element -->
     <div id="configpanel">

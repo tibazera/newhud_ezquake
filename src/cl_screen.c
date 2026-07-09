@@ -835,7 +835,12 @@ static void SCR_DrawElements(void)
 					SCR_DrawMultiviewOverviewElements ();
 
 #ifdef USE_RMLUI
-				if (HUD_RmlUi_ShouldDrawClassicHud())
+				/* Keep the classic scoreboard/team overlays: while +showscores
+				 * or +showteamscores is held, Sbar_Draw() draws only the TAB
+				 * overlays (its bottom bar is internally skipped), so the
+				 * RmlUI HUD owns the sbar and the proven classic scoreboard
+				 * still shows on TAB. */
+				if (HUD_RmlUi_ShouldDrawClassicHud() || sb_showscores || sb_showteamscores)
 #endif
 				{
 					Sbar_Draw();
