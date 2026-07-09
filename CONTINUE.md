@@ -116,7 +116,17 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - Reverted to CLASSIC scoreboard/overlay (PENDING acceptance)
+### 2026-07-09 - Split face/life/clock/fps into separate widgets (PENDING)
+
+Commit `d38daf8f`. User (with the classic-HUD reference screenshot):
+separate armor/face/life/ammo and clock/fps. w_face split from w_health,
+w_clock split from w_fps; both added to the config list. armor/ammo were
+already separate. Reference composition confirmed = classic overlays
+(kill feed/teamscores/teamoverlay/centerprint, now drawing) + the RmlUI
+bottom sbar. Weapon bar and ammo counts kept as groups (user only asked
+to split the four sbar stats and clock/fps).
+
+### 2026-07-09 - Reverted to CLASSIC scoreboard/overlay (earlier)
 
 Commit `3f1ec758`. User: the original ezQuake scoreboard is much better;
 keep it, refine from there. Map (agent): TAB scoreboard lives inside
