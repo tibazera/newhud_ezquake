@@ -46,11 +46,6 @@
         .wslot img { width: 48px; height: 32px; image-color: #ffffff60; }
         .wslot.owned img { image-color: #ffffffff; }
         .wslot.active { background-color: #30609078; }
-        .wslot .axe {
-            display: inline-block; width: 40px; font-size: 14dp;
-            color: #808080; text-align: center; padding: 8px 0;
-        }
-        .wslot.owned .axe { color: #f0f0f0; }
 
         /* ============ items (powerups/keys/sigils), right of ibar ===== */
         #items {
@@ -111,24 +106,45 @@
             white-space: pre-line;
         }
 
+        /* ============ scoreboard (+showscores) ============ */
         #scores {
             position: absolute;
-            top: 18%;
+            top: 15%;
             left: 50%;
-            margin-left: -220px;
-            width: 440px;
-            padding: 10px 16px;
+            margin-left: -260px;
+            width: 520px;
+            padding: 12px 18px;
             font-size: 17dp;
-            background-color: #000000b0;
-            border-radius: 6px;
+            background-color: #000000c8;
+            border-radius: 8px;
         }
-        #scores .title { font-size: 20dp; font-weight: bold; display: block; margin-bottom: 6px; color: #b0d0ff; }
-        #scores .prow { display: block; }
-        #scores .fr { display: inline-block; width: 56px; font-weight: bold; }
-        #scores .pn { display: inline-block; width: 190px; }
-        #scores .tm { display: inline-block; width: 90px; color: #b0b0b0; }
-        #scores .pi { display: inline-block; width: 60px; color: #b0b0b0; text-align: right; }
-        .specrow { color: #808080; }
+        #scores .title {
+            font-size: 22dp; font-weight: bold; display: block;
+            margin-bottom: 8px; color: #ffffff; text-align: center;
+        }
+        #scores .subtitle {
+            font-size: 14dp; display: block; margin-bottom: 10px;
+            color: #909090; text-align: center;
+        }
+        #scores .hrow {
+            display: block; font-size: 13dp; color: #808080;
+            border-bottom: 1dp #404040; padding-bottom: 3px; margin-bottom: 4px;
+        }
+        #scores .prow { display: block; padding: 2px 0; }
+        #scores .chip {
+            display: inline-block; width: 8px; height: 16px;
+            vertical-align: middle; margin-right: 6px;
+        }
+        #scores .fr {
+            display: inline-block; width: 52px; font-weight: bold;
+            text-align: center; vertical-align: middle;
+            border-radius: 3px; color: #ffffff;
+        }
+        #scores .pn { display: inline-block; width: 210px; vertical-align: middle; padding-left: 10px; }
+        #scores .tm { display: inline-block; width: 90px; color: #b0b0b0; vertical-align: middle; }
+        #scores .pi { display: inline-block; width: 55px; color: #b0b0b0; text-align: right; vertical-align: middle; }
+        #scores .plc { display: inline-block; width: 45px; color: #806060; text-align: right; vertical-align: middle; }
+        .specrow { color: #707070; font-size: 15dp; }
 
         /* ---- edit mode (hud_newhudeditor_edit) ---- */
         #edithint { display: none; }
@@ -154,10 +170,11 @@
 </head>
 
 <!--
-    Classic status-bar recreation (M3.5 v3) bound to the "hud" model.
-    Layout mirrors the original sbar/ibar: LCD digit lumps (num_/anum_),
-    armor icon + digits | face | health digits | ammo icon + digits, with
-    the weapon strip and mini ammo counts above, items to the right.
+    Classic status-bar HUD bound to the "hud" GameDataModel.
+    All icons resolve through {{ iconpath }} (cvar hud_newhudeditor_iconset,
+    extensionless names - the engine tries .tga/.png/.jpg), so community
+    HUD packs installed in qw/textures/wad/ can be selected with
+    `hud_newhudeditor_iconset "/textures/wad/"`.
 -->
 <body data-model="hud">
 
@@ -174,59 +191,59 @@
         <span class="net" data-if="demo_playback">DEMO</span>
     </div>
 
-    <!-- inventory bar: mini ammo counts + weapon strip -->
+    <!-- inventory bar: mini ammo counts + weapon strip (weapons 2-8,
+         like the original ibar - the axe has no classic pic) -->
     <div id="ibar">
         <span class="counts">
-            <img src="icons/sb_shells.tga"/><span>{{ shells }}</span>
-            <img src="icons/sb_nails.tga"/><span>{{ nails }}</span>
-            <img src="icons/sb_rocket.tga"/><span>{{ rockets }}</span>
-            <img src="icons/sb_cells.tga"/><span>{{ cells }}</span>
+            <img data-attr-src="iconpath + 'sb_shells'"/><span>{{ shells }}</span>
+            <img data-attr-src="iconpath + 'sb_nails'"/><span>{{ nails }}</span>
+            <img data-attr-src="iconpath + 'sb_rocket'"/><span>{{ rockets }}</span>
+            <img data-attr-src="iconpath + 'sb_cells'"/><span>{{ cells }}</span>
         </span>
-        <span class="wslot" data-class-owned="has_axe" data-class-active="weapon_num == 1"><span class="axe">AXE</span></span>
-        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2"><img data-attr-src="weapon_num == 2 ? 'icons/inv2_shotgun.tga' : 'icons/inv_shotgun.tga'"/></span>
-        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3"><img data-attr-src="weapon_num == 3 ? 'icons/inv2_sshotgun.tga' : 'icons/inv_sshotgun.tga'"/></span>
-        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4"><img data-attr-src="weapon_num == 4 ? 'icons/inv2_nailgun.tga' : 'icons/inv_nailgun.tga'"/></span>
-        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5"><img data-attr-src="weapon_num == 5 ? 'icons/inv2_snailgun.tga' : 'icons/inv_snailgun.tga'"/></span>
-        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6"><img data-attr-src="weapon_num == 6 ? 'icons/inv2_rlaunch.tga' : 'icons/inv_rlaunch.tga'"/></span>
-        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7"><img data-attr-src="weapon_num == 7 ? 'icons/inv2_srlaunch.tga' : 'icons/inv_srlaunch.tga'"/></span>
-        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8"><img data-attr-src="weapon_num == 8 ? 'icons/inv2_lightng.tga' : 'icons/inv_lightng.tga'"/></span>
+        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2"><img data-attr-src="iconpath + (weapon_num == 2 ? 'inv2_shotgun' : 'inv_shotgun')"/></span>
+        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3"><img data-attr-src="iconpath + (weapon_num == 3 ? 'inv2_sshotgun' : 'inv_sshotgun')"/></span>
+        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4"><img data-attr-src="iconpath + (weapon_num == 4 ? 'inv2_nailgun' : 'inv_nailgun')"/></span>
+        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5"><img data-attr-src="iconpath + (weapon_num == 5 ? 'inv2_snailgun' : 'inv_snailgun')"/></span>
+        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6"><img data-attr-src="iconpath + (weapon_num == 6 ? 'inv2_rlaunch' : 'inv_rlaunch')"/></span>
+        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7"><img data-attr-src="iconpath + (weapon_num == 7 ? 'inv2_srlaunch' : 'inv_srlaunch')"/></span>
+        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8"><img data-attr-src="iconpath + (weapon_num == 8 ? 'inv2_lightng' : 'inv_lightng')"/></span>
     </div>
 
     <!-- items: powerups / keys / sigils -->
     <div id="items">
-        <img data-if="quad" src="icons/sb_quad.tga"/>
-        <img data-if="pent" src="icons/sb_invuln.tga"/>
-        <img data-if="ring" src="icons/sb_invis.tga"/>
-        <img data-if="suit" src="icons/sb_suit.tga"/>
-        <img data-if="key1" src="icons/sb_key1.tga"/>
-        <img data-if="key2" src="icons/sb_key2.tga"/>
-        <img data-if="sigil1" src="icons/sb_sigil1.tga"/>
-        <img data-if="sigil2" src="icons/sb_sigil2.tga"/>
-        <img data-if="sigil3" src="icons/sb_sigil3.tga"/>
-        <img data-if="sigil4" src="icons/sb_sigil4.tga"/>
+        <img data-if="quad" data-attr-src="iconpath + 'sb_quad'"/>
+        <img data-if="pent" data-attr-src="iconpath + 'sb_invuln'"/>
+        <img data-if="ring" data-attr-src="iconpath + 'sb_invis'"/>
+        <img data-if="suit" data-attr-src="iconpath + 'sb_suit'"/>
+        <img data-if="key1" data-attr-src="iconpath + 'sb_key1'"/>
+        <img data-if="key2" data-attr-src="iconpath + 'sb_key2'"/>
+        <img data-if="sigil1" data-attr-src="iconpath + 'sb_sigil1'"/>
+        <img data-if="sigil2" data-attr-src="iconpath + 'sb_sigil2'"/>
+        <img data-if="sigil3" data-attr-src="iconpath + 'sb_sigil3'"/>
+        <img data-if="sigil4" data-attr-src="iconpath + 'sb_sigil4'"/>
     </div>
 
     <!-- classic status bar: armor | face | health | ammo -->
     <div id="sbar">
         <span class="group" data-if="armor > 0">
-            <img class="icon" data-if="armor_type == 1" src="icons/sb_armor1.tga"/>
-            <img class="icon" data-if="armor_type == 2" src="icons/sb_armor2.tga"/>
-            <img class="icon" data-if="armor_type == 3" src="icons/sb_armor3.tga"/>
-            <span class="digslot"><img data-if="armor_d100 != ''" data-attr-src="'icons/' + armor_d100 + '.tga'"/></span>
-            <span class="digslot"><img data-if="armor_d10 != ''" data-attr-src="'icons/' + armor_d10 + '.tga'"/></span>
-            <span class="digslot"><img data-if="armor_d1 != ''" data-attr-src="'icons/' + armor_d1 + '.tga'"/></span>
+            <img class="icon" data-if="armor_type == 1" data-attr-src="iconpath + 'sb_armor1'"/>
+            <img class="icon" data-if="armor_type == 2" data-attr-src="iconpath + 'sb_armor2'"/>
+            <img class="icon" data-if="armor_type == 3" data-attr-src="iconpath + 'sb_armor3'"/>
+            <span class="digslot"><img data-if="armor_d100 != ''" data-attr-src="iconpath + armor_d100"/></span>
+            <span class="digslot"><img data-if="armor_d10 != ''" data-attr-src="iconpath + armor_d10"/></span>
+            <span class="digslot"><img data-if="armor_d1 != ''" data-attr-src="iconpath + armor_d1"/></span>
         </span>
         <span class="group">
-            <img class="icon" data-attr-src="'icons/' + face_icon + '.tga'"/>
-            <span class="digslot"><img data-if="health_d100 != ''" data-attr-src="'icons/' + health_d100 + '.tga'"/></span>
-            <span class="digslot"><img data-if="health_d10 != ''" data-attr-src="'icons/' + health_d10 + '.tga'"/></span>
-            <span class="digslot"><img data-if="health_d1 != ''" data-attr-src="'icons/' + health_d1 + '.tga'"/></span>
+            <img class="icon" data-attr-src="iconpath + face_icon"/>
+            <span class="digslot"><img data-if="health_d100 != ''" data-attr-src="iconpath + health_d100"/></span>
+            <span class="digslot"><img data-if="health_d10 != ''" data-attr-src="iconpath + health_d10"/></span>
+            <span class="digslot"><img data-if="health_d1 != ''" data-attr-src="iconpath + health_d1"/></span>
         </span>
         <span class="group" data-if="weapon_num &gt; 1">
-            <img class="icon" data-attr-src="'icons/' + ammo_icon + '.tga'"/>
-            <span class="digslot"><img data-if="ammo_d100 != ''" data-attr-src="'icons/' + ammo_d100 + '.tga'"/></span>
-            <span class="digslot"><img data-if="ammo_d10 != ''" data-attr-src="'icons/' + ammo_d10 + '.tga'"/></span>
-            <span class="digslot"><img data-if="ammo_d1 != ''" data-attr-src="'icons/' + ammo_d1 + '.tga'"/></span>
+            <img class="icon" data-attr-src="iconpath + ammo_icon"/>
+            <span class="digslot"><img data-if="ammo_d100 != ''" data-attr-src="iconpath + ammo_d100"/></span>
+            <span class="digslot"><img data-if="ammo_d10 != ''" data-attr-src="iconpath + ammo_d10"/></span>
+            <span class="digslot"><img data-if="ammo_d1 != ''" data-attr-src="iconpath + ammo_d1"/></span>
         </span>
     </div>
 
@@ -235,13 +252,26 @@
 
     <div id="centerprint" data-if="centerprint_visible">{{ centerprint }}</div>
 
+    <!-- scoreboard: sorted by frags, quake team colours, spectators last -->
     <div id="scores" data-if="showscores">
-        <span class="title">{{ map }} &nbsp; {{ match_time }}</span>
+        <span class="title">{{ map_title }}</span>
+        <span class="subtitle">{{ map }} &nbsp;·&nbsp; {{ match_time }}</span>
+        <span class="hrow">
+            <span class="chip"></span>
+            <span class="fr">frags</span>
+            <span class="pn">player</span>
+            <span class="tm">team</span>
+            <span class="pi">ping</span>
+            <span class="plc">pl</span>
+        </span>
         <div class="prow" data-for="p : players" data-class-specrow="p.spectator">
-            <span class="fr">{{ p.frags }}</span>
+            <span class="chip" data-style-background-color="p.tcolor"></span>
+            <span class="fr" data-style-background-color="p.bcolor" data-if="!p.spectator">{{ p.frags }}</span>
+            <span class="fr" data-if="p.spectator">spec</span>
             <span class="pn">{{ p.name }}</span>
             <span class="tm">{{ p.team }}</span>
             <span class="pi">{{ p.ping }}</span>
+            <span class="plc">{{ p.pl }}</span>
         </div>
     </div>
 

@@ -575,6 +575,10 @@ void SCR_DrawConsole (void) {
 		clearconsole = 0;
 	} else {
 		if (key_dest == key_game || key_dest == key_message || (key_dest == key_menu && m_state == m_proxy))
+#ifdef USE_RMLUI
+			/* The RmlUI HUD mirrors the notify lines itself. */
+			if (HUD_RmlUi_ShouldDrawClassicHud())
+#endif
 			Con_DrawNotify ();      // only draw notify in game
 	}
 }
@@ -765,6 +769,9 @@ static void SCR_DrawElements(void)
 			}
 			else if (cl.intermission == 2) {
 				Sbar_FinaleOverlay();
+#ifdef USE_RMLUI
+				if (HUD_RmlUi_ShouldDrawClassicHud())
+#endif
 				SCR_CenterString_Draw();
 				if (!scr_notifyalways.integer) {
 					Con_ClearNotify();
@@ -804,6 +811,9 @@ static void SCR_DrawElements(void)
 
 					SCR_Draw_ShowNick();
 
+#ifdef USE_RMLUI
+					if (HUD_RmlUi_ShouldDrawClassicHud())
+#endif
 					SCR_CenterString_Draw();
 					SCR_DrawSpeed();
 					SCR_DrawClocks();

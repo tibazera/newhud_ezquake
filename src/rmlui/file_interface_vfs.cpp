@@ -43,14 +43,21 @@ Rml::FileHandle FileInterfaceVFS::Open(const Rml::String& path)
 {
 	RmlVfsFile* handle = new RmlVfsFile();
 
+	/* Leading '/' marks an engine-filesystem path (bypasses RmlUi's
+	 * document-relative joining); strip it before the VFS lookup. */
+	const char* name = path.c_str();
+	while (*name == '/') {
+		++name;
+	}
+
 	/* Quake filesystem first: game dirs and paks. */
-	handle->vfs = FS_OpenVFS(path.c_str(), const_cast<char*>("rb"), FS_ANY);
+	handle->vfs = FS_OpenVFS(name, const_cast<char*>("rb"), FS_ANY);
 	if (handle->vfs) {
 		return reinterpret_cast<Rml::FileHandle>(handle);
 	}
 
 	/* Fallback: loose file relative to the working directory. */
-	handle->stdio = fopen(path.c_str(), "rb");
+	handle->stdio = fopen(name, "rb");
 	if (handle->stdio) {
 		return reinterpret_cast<Rml::FileHandle>(handle);
 	}

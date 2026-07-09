@@ -16,6 +16,7 @@
 
 #include "game_data_model.h"
 
+#include <algorithm>
 #include <cmath>
 
 /* Engine headers inside extern "C"; they assume q_shared.h types. */
@@ -36,6 +37,8 @@ extern float con_times[16];
 extern qbool sb_showscores, sb_showteamscores;
 }
 
+#include "hud_rmlui.h" // hud_newhudeditor_iconset (self-guarded extern "C")
+
 namespace {
 
 struct PlayerRow {
@@ -47,7 +50,33 @@ struct PlayerRow {
 	bool spectator = false;
 	int topcolor = 0;
 	int bottomcolor = 0;
+	Rml::String tcolor; // "#rrggbb" from the quake palette (top colour)
+	Rml::String bcolor; // "#rrggbb" (bottom colour)
 };
+
+/* Quake player colour (0..13) -> "#rrggbb", from gfx/palette.lmp
+ * (classic Sbar_ColorForMap: palette index colour*16+8). */
+Rml::String PlayerColorRGB(int colour)
+{
+	static byte palette[768];
+	static bool loaded = false;
+	if (!loaded) {
+		vfsfile_t* f = FS_OpenVFS("gfx/palette.lmp", (char*)"rb", FS_ANY);
+		if (f) {
+			vfserrno_t err = VFSERR_NONE;
+			VFS_READ(f, palette, sizeof(palette), &err);
+			VFS_CLOSE(f);
+		}
+		loaded = true;
+	}
+	if (colour < 0) colour = 0;
+	if (colour > 13) colour = 13;
+	const int idx = colour * 16 + 8;
+	char buf[8];
+	snprintf(buf, sizeof(buf), "#%02x%02x%02x",
+		palette[idx * 3 + 0], palette[idx * 3 + 1], palette[idx * 3 + 2]);
+	return Rml::String(buf);
+}
 
 /* All bound scalars. The model binds directly into `data`; `prev` is the
  * last synced snapshot used to dirty only what changed. */
@@ -114,6 +143,8 @@ struct HudModel {
 	bool spectator = false;
 	bool demo_playback = false;
 	int mvd = 0;               // 0 no, 1 MVD, 2 QTV
+	// presentation
+	Rml::String iconpath;      // icon lookup prefix (hud_newhudeditor_iconset)
 	// events
 	Rml::String centerprint;   // current centerprint text ('\n' separated)
 	bool centerprint_visible = false;
@@ -387,7 +418,10 @@ void ReadEngineState(HudModel& m)
 	m.showscores = sb_showscores != 0;
 	m.showteamscores = sb_showteamscores != 0;
 
-	// -- scoreboard (connected, non-spectating players) --
+	// -- presentation --
+	m.iconpath = hud_newhudeditor_iconset.string ? hud_newhudeditor_iconset.string : "";
+
+	// -- scoreboard: players sorted by frags (spectators last) --
 	m.players.clear();
 	for (int i = 0; i < MAX_CLIENTS; ++i) {
 		const player_info_t& info = cl.players[i];
@@ -403,8 +437,20 @@ void ReadEngineState(HudModel& m)
 		row.spectator = info.spectator != 0;
 		row.topcolor = info.topcolor;
 		row.bottomcolor = info.bottomcolor;
+		row.tcolor = PlayerColorRGB(info.topcolor);
+		row.bcolor = PlayerColorRGB(info.bottomcolor);
 		m.players.push_back(row);
 	}
+	std::sort(m.players.begin(), m.players.end(),
+		[](const PlayerRow& a, const PlayerRow& b) {
+			if (a.spectator != b.spectator) {
+				return !a.spectator; // players before spectators
+			}
+			if (a.frags != b.frags) {
+				return a.frags > b.frags;
+			}
+			return a.name < b.name;
+		});
 }
 
 bool PlayersEqual(const Rml::Vector<PlayerRow>& a, const Rml::Vector<PlayerRow>& b)
@@ -453,6 +499,8 @@ bool GameDataCreate(Rml::Context* context)
 		row.RegisterMember("spectator", &PlayerRow::spectator);
 		row.RegisterMember("topcolor", &PlayerRow::topcolor);
 		row.RegisterMember("bottomcolor", &PlayerRow::bottomcolor);
+		row.RegisterMember("tcolor", &PlayerRow::tcolor);
+		row.RegisterMember("bcolor", &PlayerRow::bcolor);
 	}
 	constructor.RegisterArray<Rml::Vector<PlayerRow>>();
 
@@ -523,6 +571,8 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("spectator", &data.spectator);
 	constructor.Bind("demo_playback", &data.demo_playback);
 	constructor.Bind("mvd", &data.mvd);
+	// presentation
+	constructor.Bind("iconpath", &data.iconpath);
 	// events
 	constructor.RegisterArray<Rml::Vector<Rml::String>>();
 	constructor.Bind("centerprint", &data.centerprint);
@@ -614,6 +664,7 @@ void GameDataSync()
 	DirtyIfChanged("spectator", data.spectator, prev.spectator);
 	DirtyIfChanged("demo_playback", data.demo_playback, prev.demo_playback);
 	DirtyIfChanged("mvd", data.mvd, prev.mvd);
+	DirtyIfChanged("iconpath", data.iconpath, prev.iconpath);
 	DirtyIfChanged("centerprint", data.centerprint, prev.centerprint);
 	DirtyIfChanged("centerprint_visible", data.centerprint_visible, prev.centerprint_visible);
 	DirtyIfChanged("showscores", data.showscores, prev.showscores);

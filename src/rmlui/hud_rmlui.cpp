@@ -27,6 +27,14 @@ extern "C" {
 
 cvar_t hud_newhudeditor = {"hud_newhudeditor", "0"};
 cvar_t hud_newhudeditor_doc = {"hud_newhudeditor_doc", "ui/rml/hud/hud.rml"};
+/*
+ * Icon lookup prefix used by the HUD documents (extensionless names, the
+ * engine tries .tga/.png/.jpg). Leading '/' keeps RmlUi from joining the
+ * path against the document directory. Community HUD packs installed the
+ * standard way (qw/textures/wad/) can be selected with:
+ *   hud_newhudeditor_iconset "/textures/wad/"
+ */
+cvar_t hud_newhudeditor_iconset = {"hud_newhudeditor_iconset", "/ui/rml/hud/icons/"};
 
 namespace {
 
@@ -361,6 +369,7 @@ void HUD_RmlUi_Init(void)
 	LoadFonts();
 
 	Cvar_Register(&hud_newhudeditor_doc);
+	Cvar_Register(&hud_newhudeditor_iconset);
 	Cmd_AddCommand("hud_newhudeditor_reload", HUD_RmlUi_Reload_f);
 	Cmd_AddCommand("hud_newhudeditor_edit", HUD_RmlUi_Edit_f);
 

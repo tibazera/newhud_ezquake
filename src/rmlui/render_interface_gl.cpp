@@ -396,9 +396,16 @@ Rml::TextureHandle RenderInterfaceGL::LoadTexture(
 	 * with Q_malloc. RmlUi 6 renders with premultiplied alpha, so the raw
 	 * pixels are premultiplied before upload.
 	 */
+	/* A leading '/' marks an engine-filesystem path that must not be
+	 * joined against the document directory (see hud_newhudeditor_iconset). */
+	const char* path = source.c_str();
+	while (*path == '/') {
+		++path;
+	}
+
 	int width = 0;
 	int height = 0;
-	byte* pixels = R_LoadImagePixels(source.c_str(), 0, 0, 0, &width, &height);
+	byte* pixels = R_LoadImagePixels(path, 0, 0, 0, &width, &height);
 	if (!pixels || width <= 0 || height <= 0) {
 		texture_dimensions = Rml::Vector2i(0, 0);
 		return 0;

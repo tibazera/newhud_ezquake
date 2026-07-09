@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 extern cvar_t hud_newhudeditor;
+extern cvar_t hud_newhudeditor_iconset;
 
 void HUD_RmlUi_Init(void);
 void HUD_RmlUi_Shutdown(void);
