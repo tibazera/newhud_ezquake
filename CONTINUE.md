@@ -116,6 +116,23 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
+### 2026-07-09 - Feedback round: dedup, scoreboard v2, iconsets (PENDING accept.)
+
+Commit `f1589709`, answering user feedback (score ruim / AXE em texto /
+informações duplicadas ao entrar em servidor / quer HUDs alternativos):
+1. Duplication fixed: engine's Con_DrawNotify + SCR_CenterString_Draw are
+   gated when the RmlUI HUD is on (it mirrors both itself).
+2. Scoreboard v2: frag-sorted, spectators last, header, real quake team
+   colours from gfx/palette.lmp (chip + coloured frags cell).
+3. AXE text slot removed (original ibar shows weapons 2-8 only).
+4. ICONSETS: hud_newhudeditor_iconset cvar + {{ iconpath }} binding on
+   every image, extensionless names. To use community HUD packs from
+   https://gfx.quakeworld.nu (bugs5-hud-numbers, gnoffa-simple-hud,
+   foogs-hud, star-jedi-numbers etc.): extract the pack into
+   E:\trabalho\quake\qw\textures\wad\ (standard install) and run
+   `hud_newhudeditor_iconset "/textures/wad/"` + hud_newhudeditor_reload.
+   Default set remains the extracted classics (/ui/rml/hud/icons/).
+
 ### 2026-07-09 - DRAG EDITOR shipped (hud_newhudeditor 2, PENDING acceptance)
 
 Commit `dbe045e3`. The drag-and-drop editor, pulled forward by user
