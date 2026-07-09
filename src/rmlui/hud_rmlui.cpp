@@ -123,6 +123,11 @@ void HUD_RmlUi_Shutdown(void)
 		return;
 	}
 
+	/* Release GL resources while the context is still current. */
+	if (g_hud.render_interface) {
+		g_hud.render_interface->Shutdown();
+	}
+
 	/* Rml::Shutdown destroys all contexts. */
 	Rml::Shutdown();
 	delete g_hud.render_interface;
@@ -151,10 +156,13 @@ void HUD_RmlUi_Render(void)
 	}
 
 	/*
-	 * Render through RenderInterfaceGL. The stub interface makes this a
-	 * safe no-op; the OpenGL implementation is the next slice.
+	 * Render through RenderInterfaceGL. BeginFrame/EndFrame set up and
+	 * restore GL state around the RmlUI draw calls so the engine's own
+	 * rendering is not disturbed.
 	 */
+	g_hud.render_interface->BeginFrame(g_hud.width, g_hud.height);
 	g_hud.context->Render();
+	g_hud.render_interface->EndFrame();
 }
 
 void HUD_RmlUi_Resize(int width, int height)

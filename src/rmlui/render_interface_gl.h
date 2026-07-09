@@ -1,12 +1,15 @@
 /*
  * OpenGL RmlUI render interface for ezQuake.
  *
- * Derives from Rml::RenderInterface (RmlUi 6.x API). This first slice
- * implements the required interface with safe no-op stubs so the RmlUI
- * context can Update()/Render() without crashing; the actual OpenGL
- * implementation (ezQuake GL state/shader/buffer helpers) lands next.
+ * Derives from Rml::RenderInterface (RmlUi 6.x). Self-contained modern-GL
+ * renderer: it owns its shader program, per-geometry VAO/VBO/IBO and
+ * textures, and loads the required GL entry points itself (the engine's
+ * GL function pointers are static-per-file and not reusable). Only GL is
+ * touched here - no ezQuake engine headers - so the bridge in
+ * hud_rmlui.cpp drives BeginFrame()/EndFrame() around Context::Render().
  *
- * Intentionally engine-header free: pure C++/RmlUi.
+ * Vertex colours are premultiplied-alpha (RmlUi 6.x), so blending uses
+ * (GL_ONE, GL_ONE_MINUS_SRC_ALPHA).
  */
 
 #ifndef EZQUAKE_RMLUI_RENDER_INTERFACE_GL_H
@@ -21,6 +24,15 @@ class RenderInterfaceGL : public Rml::RenderInterface {
 public:
 	RenderInterfaceGL() = default;
 	~RenderInterfaceGL() override = default;
+
+	// -- Frame state management (called by the HUD bridge) --
+	// Sets up GL state and the orthographic projection for a view of the
+	// given size (top-left origin, pixels), then restores prior GL state.
+	void BeginFrame(int view_width, int view_height);
+	void EndFrame();
+
+	// Releases all GL resources. Call while the GL context is still valid.
+	void Shutdown();
 
 	// -- Required interface (RmlUi 6.x pure virtuals) --
 
@@ -48,9 +60,30 @@ public:
 	void EnableScissorRegion(bool enable) override;
 	void SetScissorRegion(Rml::Rectanglei region) override;
 
-	// -- Debug counters (stub phase) --
-	int geometry_compiled = 0;
-	int geometry_rendered = 0;
+private:
+	bool EnsureInitialised();
+
+	bool initialised_ = false;
+	bool init_failed_ = false;
+	bool in_frame_ = false;
+
+	unsigned int program_ = 0;       // GLuint shader program
+	unsigned int white_texture_ = 0; // 1x1 white, bound when geometry has no texture
+	int u_translation_ = -1;
+	int u_projection_ = -1;
+	int viewport_height_ = 0;        // GL framebuffer height, for scissor Y-flip
+
+	// Saved GL state between BeginFrame()/EndFrame().
+	struct SavedState {
+		int program;
+		int vertex_array;
+		int array_buffer;
+		int element_buffer;
+		int active_texture;
+		int texture_2d;
+		unsigned char blend, depth, cull, scissor;
+		int viewport[4];
+	} saved_{};
 };
 
 } // namespace rmlui
