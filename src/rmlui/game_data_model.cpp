@@ -85,6 +85,10 @@ struct HudModel {
 	bool sigil4 = false;
 	Rml::String face_icon;     // classic face lump for current state (face1..face5, face_quad, ...)
 	Rml::String ammo_icon;     // ammo-box lump for the active weapon (sb_shells...)
+	// Classic LCD digit lumps (num_*/anum_* when low); "" = digit hidden.
+	Rml::String health_d100, health_d10, health_d1;
+	Rml::String armor_d100, armor_d10, armor_d1;
+	Rml::String ammo_d100, ammo_d10, ammo_d1;
 	Rml::String name;
 	Rml::String team;
 	int frags = 0;
@@ -190,6 +194,20 @@ const char* FaceIcon(int health, int stat_items)
 	return faces[f];
 }
 
+/* Classic sbar LCD digits: up to 3 digits, white num_* normally and the
+ * red/gold anum_* variant when the value is low, exactly like Sbar_DrawNum. */
+void SetDigits(int value, bool low,
+	Rml::String& d100, Rml::String& d10, Rml::String& d1)
+{
+	if (value < 0) value = 0;
+	if (value > 999) value = 999;
+	const char* set = low ? "anum_" : "num_";
+
+	d100 = (value >= 100) ? (Rml::String(set) + char('0' + (value / 100) % 10)) : "";
+	d10 = (value >= 10) ? (Rml::String(set) + char('0' + (value / 10) % 10)) : "";
+	d1 = Rml::String(set) + char('0' + value % 10);
+}
+
 /* Ammo box icon for the active weapon's ammo type. */
 const char* AmmoIcon(int weapon_num)
 {
@@ -254,6 +272,9 @@ void ReadEngineState(HudModel& m)
 	m.sigil4 = (stat_items & IT_SIGIL4) != 0;
 	m.face_icon = FaceIcon(m.health, stat_items);
 	m.ammo_icon = AmmoIcon(m.weapon_num);
+	SetDigits(m.health, m.health <= 25, m.health_d100, m.health_d10, m.health_d1);
+	SetDigits(m.armor, m.armor <= 25, m.armor_d100, m.armor_d10, m.armor_d1);
+	SetDigits(m.ammo, m.ammo <= 10, m.ammo_d100, m.ammo_d10, m.ammo_d1);
 
 	if (slot >= 0 && slot < MAX_CLIENTS) {
 		const player_info_t& info = cl.players[slot];
@@ -468,6 +489,15 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("sigil4", &data.sigil4);
 	constructor.Bind("face_icon", &data.face_icon);
 	constructor.Bind("ammo_icon", &data.ammo_icon);
+	constructor.Bind("health_d100", &data.health_d100);
+	constructor.Bind("health_d10", &data.health_d10);
+	constructor.Bind("health_d1", &data.health_d1);
+	constructor.Bind("armor_d100", &data.armor_d100);
+	constructor.Bind("armor_d10", &data.armor_d10);
+	constructor.Bind("armor_d1", &data.armor_d1);
+	constructor.Bind("ammo_d100", &data.ammo_d100);
+	constructor.Bind("ammo_d10", &data.ammo_d10);
+	constructor.Bind("ammo_d1", &data.ammo_d1);
 	constructor.Bind("name", &data.name);
 	constructor.Bind("team", &data.team);
 	constructor.Bind("frags", &data.frags);
@@ -552,6 +582,15 @@ void GameDataSync()
 	DirtyIfChanged("sigil4", data.sigil4, prev.sigil4);
 	DirtyIfChanged("face_icon", data.face_icon, prev.face_icon);
 	DirtyIfChanged("ammo_icon", data.ammo_icon, prev.ammo_icon);
+	DirtyIfChanged("health_d100", data.health_d100, prev.health_d100);
+	DirtyIfChanged("health_d10", data.health_d10, prev.health_d10);
+	DirtyIfChanged("health_d1", data.health_d1, prev.health_d1);
+	DirtyIfChanged("armor_d100", data.armor_d100, prev.armor_d100);
+	DirtyIfChanged("armor_d10", data.armor_d10, prev.armor_d10);
+	DirtyIfChanged("armor_d1", data.armor_d1, prev.armor_d1);
+	DirtyIfChanged("ammo_d100", data.ammo_d100, prev.ammo_d100);
+	DirtyIfChanged("ammo_d10", data.ammo_d10, prev.ammo_d10);
+	DirtyIfChanged("ammo_d1", data.ammo_d1, prev.ammo_d1);
 	DirtyIfChanged("name", data.name, prev.name);
 	DirtyIfChanged("team", data.team, prev.team);
 	DirtyIfChanged("frags", data.frags, prev.frags);
