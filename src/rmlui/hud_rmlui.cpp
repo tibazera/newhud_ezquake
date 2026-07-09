@@ -1,19 +1,45 @@
 /*
  * ezQuake RmlUI HUD bridge.
  *
- * Initial OpenGL-only scaffold. The next step is to replace the internal stub
- * with RmlUI Context + RenderInterface_GL wiring.
+ * Real RmlUI (6.x) lifecycle: system + render interfaces are installed at
+ * init, the "hud" context is created lazily once the video dimensions are
+ * known, and Update()/Render() run from the engine 2D frame path. The
+ * render interface is still a safe stub (no GL yet), so rendering is a
+ * no-op by design - next slice implements the OpenGL path.
  */
 
-#include "hud_rmlui.h"
+/* RmlUi first: pure C++ headers, keep them clear of engine macros. */
+#include <RmlUi/Core.h>
 
+/*
+ * Engine headers inside extern "C": cvar.h/quakedef.h assume q_shared.h
+ * types (qbool, byte) and every declaration must keep C linkage here.
+ */
 extern "C" {
 #include "quakedef.h"
 }
 
+#include "hud_rmlui.h"
+#include "render_interface_gl.h"
+
 cvar_t hud_newhudeditor = {"hud_newhudeditor", "0"};
 
 namespace {
+
+class SystemInterfaceEz : public Rml::SystemInterface {
+public:
+	double GetElapsedTime() override
+	{
+		return Sys_DoubleTime();
+	}
+
+	bool LogMessage(Rml::Log::Type type, const Rml::String& message) override
+	{
+		const char* prefix = (type <= Rml::Log::LT_ERROR) ? "ERROR " : "";
+		Com_Printf("RmlUI: %s%s\n", prefix, message.c_str());
+		return true;
+	}
+};
 
 struct RmlHudState {
 	bool initialized = false;
@@ -29,6 +55,10 @@ struct RmlHudState {
 	int maxclients = 0;
 	double game_time = 0.0;
 	char map_name[64] = {0};
+
+	SystemInterfaceEz* system_interface = nullptr;
+	ezquake::rmlui::RenderInterfaceGL* render_interface = nullptr;
+	Rml::Context* context = nullptr;
 };
 
 RmlHudState g_hud;
@@ -43,18 +73,60 @@ bool ClassicModeEnabled()
 	return !RmlModeEnabled();
 }
 
+void EnsureContext()
+{
+	if (g_hud.context || !g_hud.initialized || g_hud.width <= 0 || g_hud.height <= 0) {
+		return;
+	}
+
+	g_hud.context = Rml::CreateContext("hud", Rml::Vector2i(g_hud.width, g_hud.height));
+	if (g_hud.context) {
+		Com_Printf("RmlUI HUD: context created (%dx%d)\n", g_hud.width, g_hud.height);
+	}
+	else {
+		Com_Printf("RmlUI HUD: ERROR failed to create context\n");
+	}
+}
+
 } // namespace
 
 extern "C" {
 
 void HUD_RmlUi_Init(void)
 {
+	if (g_hud.initialized) {
+		return;
+	}
+
+	g_hud.system_interface = new SystemInterfaceEz();
+	g_hud.render_interface = new ezquake::rmlui::RenderInterfaceGL();
+
+	Rml::SetSystemInterface(g_hud.system_interface);
+	Rml::SetRenderInterface(g_hud.render_interface);
+
+	if (!Rml::Initialise()) {
+		Com_Printf("RmlUI HUD: ERROR Rml::Initialise() failed\n");
+		delete g_hud.render_interface;
+		delete g_hud.system_interface;
+		g_hud = RmlHudState{};
+		return;
+	}
+
 	g_hud.initialized = true;
-	Com_Printf("RmlUI HUD: OpenGL bridge scaffold initialized. Set hud_newhudeditor 1 to use it.\n");
+	Com_Printf("RmlUI HUD: initialised (RmlUi %s). Set hud_newhudeditor 1 to use it.\n",
+		Rml::GetVersion().c_str());
 }
 
 void HUD_RmlUi_Shutdown(void)
 {
+	if (!g_hud.initialized) {
+		return;
+	}
+
+	/* Rml::Shutdown destroys all contexts. */
+	Rml::Shutdown();
+	delete g_hud.render_interface;
+	delete g_hud.system_interface;
 	g_hud = RmlHudState{};
 }
 
@@ -65,25 +137,34 @@ void HUD_RmlUi_Frame(double dt)
 		return;
 	}
 
-	/* Future: update RmlUI data models and animations here. */
+	EnsureContext();
+	if (g_hud.context) {
+		/* Future: push GameDataModel updates before Update(). */
+		g_hud.context->Update();
+	}
 }
 
 void HUD_RmlUi_Render(void)
 {
-	if (!g_hud.initialized || !RmlModeEnabled()) {
+	if (!g_hud.initialized || !RmlModeEnabled() || !g_hud.context) {
 		return;
 	}
 
 	/*
-	 * Future: Rml::Context::Render() through RenderInterface_GL.
-	 * This intentionally does not touch the vkQuake Vulkan renderer.
+	 * Render through RenderInterfaceGL. The stub interface makes this a
+	 * safe no-op; the OpenGL implementation is the next slice.
 	 */
+	g_hud.context->Render();
 }
 
 void HUD_RmlUi_Resize(int width, int height)
 {
 	g_hud.width = width;
 	g_hud.height = height;
+
+	if (g_hud.context) {
+		g_hud.context->SetDimensions(Rml::Vector2i(width, height));
+	}
 }
 
 void HUD_RmlUi_SyncGameState(

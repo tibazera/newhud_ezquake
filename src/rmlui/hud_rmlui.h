@@ -8,7 +8,14 @@
 #ifndef EZQUAKE_HUD_RMLUI_H
 #define EZQUAKE_HUD_RMLUI_H
 
-#include "cvar.h"
+/*
+ * NOTE: this header does NOT include engine headers on purpose. cvar.h
+ * cannot be compiled standalone (it needs qbool/byte from q_shared.h), so
+ * consumers must include the engine headers first:
+ *   - C consumers (hud.c, cl_screen.c) already do via quakedef.h.
+ *   - The C++ implementation (hud_rmlui.cpp) includes quakedef.h inside
+ *     extern "C" before this header.
+ */
 
 #ifdef __cplusplus
 extern "C" {

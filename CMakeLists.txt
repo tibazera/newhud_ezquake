@@ -143,7 +143,16 @@ check_dependency(SpeexDSP "speexdsp"   "SpeexDSP"           "SPEEX::SPEEXDSP"   
 check_dependency(cURL     "libcurl"    "CURL"               "CURL::libcurl"                REQUIRED CONFIG)
 check_dependency(zlib     "zlib"       "ZLIB"               "ZLIB::ZLIB"                   REQUIRED)
 
-if(USE_SYSTEM_LIBS AND HAVE_MINIZIP)
+# RmlUI HUD (USE_RMLUI): embedded UI library, rendered via OpenGL.
+# Lua bindings stay disabled (vcpkg default features only pull freetype).
+if(USE_RMLUI)
+    find_package(RmlUi CONFIG REQUIRED)
+endif()
+
+# Newer vcpkg minizip ports export the include root (headers live under
+# include/minizip/), while fs.h does #include "unzip.h" - resolve the real
+# header directory in both system-libs and vcpkg modes.
+if(HAVE_MINIZIP)
     find_path(EZQUAKE_MINIZIP_INCLUDE_DIR
             NAMES unzip.h
             HINTS ${MiniZip_INCLUDE_DIRS}
@@ -857,6 +866,9 @@ add_executable(ezquake ${TARGET_TYPE}
 target_include_directories(ezquake PRIVATE
         ${SOURCE_DIR}/qwprot/src
         ${EZQUAKE_MINIZIP_INCLUDE_DIR}
+        # src/rmlui/*.cpp include engine headers ("cvar.h", "quakedef.h")
+        # that live in src/; C sources never needed this as they sit there.
+        $<$<BOOL:${USE_RMLUI}>:${SOURCE_DIR}>
 )
 
 target_compile_definitions(ezquake PRIVATE
@@ -917,6 +929,8 @@ target_link_libraries(ezquake PRIVATE
         Dep::MiniZip
 
         $<$<BOOL:${HAVE_FREETYPE}>:Dep::FreeType>
+
+        $<$<BOOL:${USE_RMLUI}>:RmlUi::RmlUi>
 
         $<$<AND:$<BOOL:${HAVE_SPEEX}>,$<BOOL:${HAVE_SPEEXDSP}>>:Dep::Speex>
         $<$<AND:$<BOOL:${HAVE_SPEEX}>,$<BOOL:${HAVE_SPEEXDSP}>>:Dep::SpeexDSP>
