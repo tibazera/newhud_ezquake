@@ -76,7 +76,9 @@ struct EditorState {
 };
 EditorState g_editor;
 
-void StylePickerClose(); // defined below
+void StylePickerClose();      // defined below
+void SaveLayout();            // defined below
+void ApplyWidgetVisibility(); // defined below
 
 /*
  * Style picker interactions: hovering a card live-previews the whole HUD
@@ -128,6 +130,32 @@ public:
 	}
 };
 PickerEventListener g_picker_listener;
+
+/* Config panel: clicking a widget row toggles its visibility. */
+class ConfigEventListener : public Rml::EventListener {
+public:
+	void ProcessEvent(Rml::Event& event) override
+	{
+		if (event.GetId() != Rml::EventId::Click) {
+			return;
+		}
+		Rml::Element* row = event.GetTargetElement();
+		while (row && !row->HasAttribute("wid")) {
+			row = row->GetParentNode();
+		}
+		if (!row) {
+			return;
+		}
+		const Rml::String id = row->GetAttribute<Rml::String>("wid", "");
+		if (id.empty()) {
+			return;
+		}
+		ezquake::rmlui::GameDataToggleWidget(id.c_str());
+		ApplyWidgetVisibility();
+		SaveLayout();
+	}
+};
+ConfigEventListener g_config_listener;
 
 bool RmlModeEnabled()
 {
@@ -184,6 +212,9 @@ void LoadHudDocument()
 			picker->AddEventListener("mouseover", &g_picker_listener);
 			picker->AddEventListener("mouseout", &g_picker_listener);
 		}
+		if (Rml::Element* cfg = g_hud.document->GetElementById("configpanel")) {
+			cfg->AddEventListener("click", &g_config_listener);
+		}
 		Com_Printf("RmlUI HUD: loaded document %s\n", path);
 	}
 	else {
@@ -217,6 +248,21 @@ bool IsWidgetId(const Rml::String& id)
 	return id.size() > 2 && id[0] == 'w' && id[1] == '_';
 }
 
+/* Show/hide each widget per the model's hidden set. */
+void ApplyWidgetVisibility()
+{
+	if (!g_hud.document) {
+		return;
+	}
+	const int n = ezquake::rmlui::GameDataWidgetCount();
+	for (int i = 0; i < n; ++i) {
+		const char* id = ezquake::rmlui::GameDataWidgetIdAt(i);
+		if (Rml::Element* el = g_hud.document->GetElementById(id)) {
+			el->SetClass("whidden", ezquake::rmlui::GameDataWidgetHidden(id));
+		}
+	}
+}
+
 void SaveLayout()
 {
 	if (!g_hud.document) {
@@ -232,8 +278,17 @@ void SaveLayout()
 		}
 		const Rml::Vector2f pos = child->GetAbsoluteOffset(Rml::BoxArea::Border);
 		char line[128];
-		snprintf(line, sizeof(line), "%s %d %d\n", id.c_str(), (int)pos.x, (int)pos.y);
+		snprintf(line, sizeof(line), "pos %s %d %d\n", id.c_str(), (int)pos.x, (int)pos.y);
 		out += line;
+	}
+
+	/* Hidden widgets. */
+	const int n = ezquake::rmlui::GameDataWidgetCount();
+	for (int i = 0; i < n; ++i) {
+		const char* id = ezquake::rmlui::GameDataWidgetIdAt(i);
+		if (ezquake::rmlui::GameDataWidgetHidden(id)) {
+			out += Rml::String("hide ") + id + "\n";
+		}
 	}
 
 	vfsfile_t* f = FS_OpenVFS(LAYOUT_FILE, (char*)"wb", FS_GAME_OS);
@@ -269,17 +324,21 @@ void LoadLayout()
 		if (end == Rml::String::npos) {
 			end = text.size();
 		}
+		const Rml::String line = text.substr(start, end - start);
 		char id[64];
 		int x = 0, y = 0;
-		const Rml::String line = text.substr(start, end - start);
-		if (sscanf(line.c_str(), "%63s %d %d", id, &x, &y) == 3) {
+		if (sscanf(line.c_str(), "pos %63s %d %d", id, &x, &y) == 3) {
 			if (Rml::Element* el = g_hud.document->GetElementById(id)) {
 				ApplyElementPosition(el, (float)x, (float)y);
 				++applied;
 			}
 		}
+		else if (sscanf(line.c_str(), "hide %63s", id) == 1) {
+			ezquake::rmlui::GameDataSetWidgetHidden(id, true);
+		}
 		start = end + 1;
 	}
+	ApplyWidgetVisibility();
 	if (applied) {
 		Com_Printf("RmlUI HUD: layout loaded (%d elements)\n", applied);
 	}

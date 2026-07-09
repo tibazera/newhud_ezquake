@@ -67,22 +67,62 @@
             font-size: 22dp; font-weight: bold; color: #ffe8a0; white-space: pre-line;
         }
 
-        /* ---- scoreboard ---- */
+        /* ---- scoreboard (clean QW-style) ---- */
         #w_scores {
-            top: 15%; left: 50%; margin-left: -260px; width: 520px;
-            padding: 12px 18px; background-color: #000000c8; border-radius: 8px; font-size: 17dp;
+            top: 12%; left: 50%; margin-left: -290px; width: 580px;
+            background-color: #0d1016f0; border-radius: 10px;
+            border: 1dp #2a3340;
         }
-        #w_scores .title { font-size: 22dp; font-weight: bold; display: block; text-align: center; color: #ffffff; }
-        #w_scores .subtitle { font-size: 14dp; display: block; text-align: center; color: #909090; margin-bottom: 10px; }
-        #w_scores .hrow { display: block; font-size: 13dp; color: #808080; border-bottom: 1dp #404040; padding-bottom: 3px; margin-bottom: 4px; }
-        #w_scores .prow { display: block; padding: 2px 0; }
-        #w_scores .chip { display: inline-block; width: 8px; height: 16px; vertical-align: middle; margin-right: 6px; }
-        #w_scores .fr { display: inline-block; width: 52px; font-weight: bold; text-align: center; vertical-align: middle; border-radius: 3px; }
-        #w_scores .pn { display: inline-block; width: 210px; vertical-align: middle; padding-left: 10px; }
-        #w_scores .tm { display: inline-block; width: 90px; color: #b0b0b0; vertical-align: middle; }
-        #w_scores .pi { display: inline-block; width: 55px; color: #b0b0b0; text-align: right; vertical-align: middle; }
-        #w_scores .plc { display: inline-block; width: 45px; color: #806060; text-align: right; vertical-align: middle; }
-        .specrow { color: #707070; font-size: 15dp; }
+        #w_scores .shead {
+            display: block; padding: 14px 0 12px 0;
+            background-color: #161c26; border-radius: 10px 10px 0 0;
+        }
+        #w_scores .title { display: block; text-align: center; font-size: 24dp; font-weight: bold; color: #ffffff; }
+        #w_scores .subtitle { display: block; text-align: center; font-size: 14dp; color: #7d8ba0; }
+        #w_scores .cols {
+            display: block; padding: 6px 20px; font-size: 12dp; color: #6a7686;
+            border-bottom: 2dp #232c38;
+        }
+        #w_scores .body { display: block; padding: 4px 0 8px 0; }
+        #w_scores .prow { display: block; padding: 4px 20px; }
+        #w_scores .prow:hover { background-color: #ffffff08; }
+        #w_scores .accent { display: inline-block; width: 5px; height: 22px; vertical-align: middle; border-radius: 2px; margin-right: 12px; }
+        #w_scores .fr {
+            display: inline-block; width: 46px; font-size: 20dp; font-weight: bold;
+            text-align: right; vertical-align: middle; color: #ffffff;
+        }
+        #w_scores .pn { display: inline-block; width: 300px; vertical-align: middle; padding-left: 16px; font-size: 17dp; color: #e8ecf2; }
+        #w_scores .pi { display: inline-block; width: 46px; text-align: right; vertical-align: middle; font-size: 15dp; color: #98a4b4; }
+        #w_scores .plc { display: inline-block; width: 40px; text-align: right; vertical-align: middle; font-size: 15dp; color: #b08080; }
+        #w_scores .col-fr { width: 46px; display: inline-block; text-align: right; }
+        #w_scores .col-pn { width: 300px; display: inline-block; padding-left: 33px; }
+        #w_scores .col-pi { width: 46px; display: inline-block; text-align: right; }
+        #w_scores .col-plc { width: 40px; display: inline-block; text-align: right; }
+        #w_scores .prow.specrow { color: #6a7280; }
+        #w_scores .prow.specrow .fr { font-size: 13dp; color: #6a7280; }
+        #w_scores .prow.specrow .pn { color: #8a94a0; font-size: 15dp; }
+
+        /* ---- config panel (edit mode) ---- */
+        #configpanel { display: none; }
+        body.edit #configpanel {
+            display: block; position: absolute; top: 50%; left: 14px;
+            margin-top: -150px; width: 230px; padding: 12px 14px;
+            background-color: #0d1016f2; border: 1dp #33465c; border-radius: 8px;
+        }
+        #configpanel .ctitle { display: block; font-size: 15dp; font-weight: bold; color: #ffffff; margin-bottom: 3px; }
+        #configpanel .chelp { display: block; font-size: 12dp; color: #7d8ba0; margin-bottom: 10px; }
+        #configpanel .crow {
+            display: block; padding: 5px 6px; margin: 1px 0; border-radius: 4px;
+            font-size: 14dp; color: #c0c8d2;
+        }
+        #configpanel .crow:hover { background-color: #ffffff10; }
+        #configpanel .cbox {
+            display: inline-block; width: 16px; height: 16px; vertical-align: middle;
+            margin-right: 8px; border: 1dp #5a6b7e; border-radius: 3px; text-align: center;
+            font-size: 13dp; color: #60c060;
+        }
+        #configpanel .crow.on .cbox { background-color: #2a5a2a; }
+        #configpanel .crow.off { color: #6a7280; }
 
         /* ============ style picker (responsive, wraps, scrolls) ============ */
         #stylepicker {
@@ -126,6 +166,7 @@
             color: #ffe080; background-color: #000000c0; border-radius: 4px; padding: 6px 0;
         }
         body.edit .widget { border: 1dp #60a0ff90; background-color: #10305010; }
+        .whidden { display: none; }
     </style>
 </head>
 
@@ -209,21 +250,37 @@
     <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
 
     <div id="w_scores" class="widget" data-if="showscores">
-        <span class="title">{{ map_title }}</span>
-        <span class="subtitle">{{ map }} &nbsp;·&nbsp; {{ match_time }}</span>
-        <span class="hrow">
-            <span class="chip"></span><span class="fr">frags</span>
-            <span class="pn">player</span><span class="tm">team</span>
-            <span class="pi">ping</span><span class="plc">pl</span>
+        <span class="shead">
+            <span class="title">{{ map_title }}</span>
+            <span class="subtitle">{{ map }} &nbsp;·&nbsp; {{ match_time }}</span>
         </span>
-        <div class="prow" data-for="p : players" data-class-specrow="p.spectator">
-            <span class="chip" data-style-background-color="p.tcolor"></span>
-            <span class="fr" data-style-background-color="p.bcolor" data-if="!p.spectator">{{ p.frags }}</span>
-            <span class="fr" data-if="p.spectator">spec</span>
-            <span class="pn">{{ p.name }}</span>
-            <span class="tm">{{ p.team }}</span>
-            <span class="pi">{{ p.ping }}</span>
-            <span class="plc">{{ p.pl }}</span>
+        <span class="cols">
+            <span class="col-fr">FRAGS</span>
+            <span class="col-pn">PLAYER</span>
+            <span class="col-pi">PING</span>
+            <span class="col-plc">PL</span>
+        </span>
+        <span class="body">
+            <div class="prow" data-for="p : players" data-class-specrow="p.spectator">
+                <span class="accent" data-style-background-color="p.tcolor"></span>
+                <span class="fr" data-style-color="p.bcolor" data-if="!p.spectator">{{ p.frags }}</span>
+                <span class="fr" data-if="p.spectator">S</span>
+                <span class="pn">{{ p.name }}</span>
+                <span class="pi">{{ p.ping }}</span>
+                <span class="plc">{{ p.pl }}</span>
+            </div>
+        </span>
+    </div>
+
+    <!-- edit-mode config panel: show/hide each element -->
+    <div id="configpanel">
+        <span class="ctitle">Elementos do HUD</span>
+        <span class="chelp">clique para mostrar/ocultar · arraste cada um na tela</span>
+        <div class="crow" data-for="w : widgets"
+             data-attr-wid="w.id"
+             data-class-on="w.visible"
+             data-class-off="!w.visible">
+            <span class="cbox">{{ w.visible ? '✓' : '' }}</span>{{ w.label }}
         </div>
     </div>
 

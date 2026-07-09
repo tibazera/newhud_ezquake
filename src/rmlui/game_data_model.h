@@ -39,6 +39,14 @@ bool GameDataStylePickerOpen();
 void GameDataPreviewIconset(const char* path); // hover: temporary override
 void GameDataEndPreviewIconset();              // hover out: back to the cvar
 
+// Widget config (edit mode): per-widget show/hide. State persists across
+// document reloads (kept outside the bound model).
+void GameDataToggleWidget(const char* id);
+void GameDataSetWidgetHidden(const char* id, bool hidden);
+bool GameDataWidgetHidden(const char* id);
+int GameDataWidgetCount();
+const char* GameDataWidgetIdAt(int index);
+
 } // namespace rmlui
 } // namespace ezquake
 

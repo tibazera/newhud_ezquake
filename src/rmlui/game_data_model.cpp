@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 /* Engine headers inside extern "C"; they assume q_shared.h types. */
 extern "C" {
@@ -44,6 +45,12 @@ namespace {
 struct IconsetRow {
 	Rml::String name;
 	Rml::String path;
+};
+
+struct WidgetRow {
+	Rml::String id;
+	Rml::String label;
+	bool visible = true;
 };
 
 struct PlayerRow {
@@ -152,6 +159,7 @@ struct HudModel {
 	Rml::String iconpath;      // icon lookup prefix (hud_newhudeditor_iconset)
 	bool stylepicker = false;  // visual iconset picker overlay
 	Rml::Vector<IconsetRow> iconsets;
+	Rml::Vector<WidgetRow> widgets; // edit-mode show/hide list
 	// events
 	Rml::String centerprint;   // current centerprint text ('\n' separated)
 	bool centerprint_visible = false;
@@ -174,6 +182,37 @@ double cp_stamp = -1.0; // cl.time when received; < 0 = none
 /* Style-picker hover preview: overrides the cvar-driven iconpath. */
 Rml::String preview_path;
 bool preview_active = false;
+
+/* Widget catalog (id + label) and persistent hidden set. */
+struct WidgetDef { const char* id; const char* label; };
+const WidgetDef WIDGET_DEFS[] = {
+	{"w_health",     "Vida"},
+	{"w_armor",      "Armadura"},
+	{"w_ammo",       "Munição (arma ativa)"},
+	{"w_weapons",    "Barra de armas"},
+	{"w_ammocounts", "Munição (por tipo)"},
+	{"w_items",      "Itens / Powerups"},
+	{"w_frags",      "Frags"},
+	{"w_speed",      "Velocidade"},
+	{"w_clock",      "Relógio / FPS"},
+	{"w_notify",     "Mensagens (mortes / chat)"},
+	{"w_centerprint","Avisos centrais"},
+};
+const int WIDGET_COUNT = (int)(sizeof(WIDGET_DEFS) / sizeof(WIDGET_DEFS[0]));
+
+std::set<Rml::String> g_hidden_widgets;
+
+void RebuildWidgetRows()
+{
+	data.widgets.clear();
+	for (int i = 0; i < WIDGET_COUNT; ++i) {
+		WidgetRow row;
+		row.id = WIDGET_DEFS[i].id;
+		row.label = WIDGET_DEFS[i].label;
+		row.visible = g_hidden_widgets.find(row.id) == g_hidden_widgets.end();
+		data.widgets.push_back(row);
+	}
+}
 
 const char* WeaponLabel(int weapon_num)
 {
@@ -512,6 +551,13 @@ bool GameDataCreate(Rml::Context* context)
 	}
 	constructor.RegisterArray<Rml::Vector<IconsetRow>>();
 
+	if (auto row = constructor.RegisterStruct<WidgetRow>()) {
+		row.RegisterMember("id", &WidgetRow::id);
+		row.RegisterMember("label", &WidgetRow::label);
+		row.RegisterMember("visible", &WidgetRow::visible);
+	}
+	constructor.RegisterArray<Rml::Vector<WidgetRow>>();
+
 	if (auto row = constructor.RegisterStruct<PlayerRow>()) {
 		row.RegisterMember("name", &PlayerRow::name);
 		row.RegisterMember("team", &PlayerRow::team);
@@ -597,6 +643,7 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("iconpath", &data.iconpath);
 	constructor.Bind("stylepicker", &data.stylepicker);
 	constructor.Bind("iconsets", &data.iconsets);
+	constructor.Bind("widgets", &data.widgets);
 	// events
 	constructor.RegisterArray<Rml::Vector<Rml::String>>();
 	constructor.Bind("centerprint", &data.centerprint);
@@ -606,6 +653,8 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("showscores", &data.showscores);
 	constructor.Bind("showteamscores", &data.showteamscores);
 	constructor.Bind("players", &data.players);
+
+	RebuildWidgetRows();
 
 	model_handle = constructor.GetModelHandle();
 	model_ready = true;
@@ -793,6 +842,57 @@ void GameDataEndPreviewIconset()
 {
 	preview_active = false;
 	preview_path.clear();
+}
+
+void GameDataToggleWidget(const char* id)
+{
+	if (!id) {
+		return;
+	}
+	const Rml::String key = id;
+	if (g_hidden_widgets.count(key)) {
+		g_hidden_widgets.erase(key);
+	}
+	else {
+		g_hidden_widgets.insert(key);
+	}
+	RebuildWidgetRows();
+	if (model_ready) {
+		model_handle.DirtyVariable("widgets");
+	}
+}
+
+void GameDataSetWidgetHidden(const char* id, bool hidden)
+{
+	if (!id) {
+		return;
+	}
+	const Rml::String key = id;
+	if (hidden) {
+		g_hidden_widgets.insert(key);
+	}
+	else {
+		g_hidden_widgets.erase(key);
+	}
+	RebuildWidgetRows();
+	if (model_ready) {
+		model_handle.DirtyVariable("widgets");
+	}
+}
+
+bool GameDataWidgetHidden(const char* id)
+{
+	return id && g_hidden_widgets.count(id) > 0;
+}
+
+int GameDataWidgetCount()
+{
+	return WIDGET_COUNT;
+}
+
+const char* GameDataWidgetIdAt(int index)
+{
+	return (index >= 0 && index < WIDGET_COUNT) ? WIDGET_DEFS[index].id : "";
 }
 
 } // namespace rmlui
