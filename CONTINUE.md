@@ -18,18 +18,21 @@ there is no ambiguity with the old `hud_editor` and classic HUD cvars.
 
 ## Status Summary (2026-07-09)
 
-The scaffold is no longer inert: the CONTINUE.md roadmap **steps 1-7 are done at
-the code level** and the client **builds and links** with the RmlUI HUD embedded.
-What remains is **runtime visual verification** (requires launching the client
-with Quake game data) plus richer features. See "Progress Log" and "Suggested
-Next Steps" below.
+The CONTINUE.md roadmap **steps 1-7 are done and VISUALLY CONFIRMED ON SCREEN**
+(2026-07-09). The client builds, links, and renders a live RmlUI HUD inside
+ezQuake.
 
 - `USE_RMLUI=ON` builds `ezquake.exe` with RmlUi 6.2 statically linked.
-- The RmlUI context initialises, exposes a "hud" data model, loads a font + a
-  minimal data-bound document, and renders through a real OpenGL render
-  interface.
-- Not yet confirmed on screen (no game data / display available in the dev
-  environment used for the port).
+- Verified on the user's machine (E:\trabalho\quake, map "Introduction"): the
+  minimal document draws bottom-left with a rounded translucent panel, correct
+  premultiplied-alpha blending, LatoLatin text, and LIVE data - the RmlUI panel
+  showed "HP 100 / AM 22" matching the classic HUD's independent 100/22,
+  proving SyncGameState -> "hud" data model -> document binding end to end.
+- KNOWN COSMETIC ISSUE: the classic/new HUD still draws underneath. Our
+  `hud_newhudeditor 1` only early-returns from `HUD_Draw()` (sbar path) in
+  `hud.c`; the bottom HUD elements come from `SCR_DrawNewHudElements()` /
+  `SCR_DrawElements()` in `cl_screen.c`, which we do not gate yet. Gate those on
+  `!HUD_RmlUi_ShouldDrawClassicHud()` to show the new HUD alone.
 
 ## Important Local Paths
 
@@ -112,6 +115,15 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 5. Diagnostics are printed to the console (`RmlUI HUD: ...`, `RmlUI GL: ...`).
 
 ## Progress Log
+
+### 2026-07-09 - VISUAL VERIFICATION PASSED
+
+Ran on the user's Quake install (E:\trabalho\quake, exe + ui\ copied there,
+run-newhud.bat -> +map start +hud_newhudeditor 1). The RmlUI HUD rendered
+correctly on the "Introduction" map: bottom-left translucent rounded panel,
+crisp LatoLatin text, live "HP 100 / AM 22" and map/time. No shader/GL/coord
+issues surfaced. Only open item: classic HUD still visible underneath (separate
+draw path, see Status Summary).
 
 ### 2026-07-08/09 - build bootstrap + roadmap steps 1-7 (branch feat/rmlui-opengl-build)
 
@@ -239,9 +251,8 @@ ezQuake client state
   -> ezQuake frame
 ```
 
-Implemented end to end (pending on-screen confirmation). The old `hud_editor`
-should eventually be replaced by an RmlUI editor UI, but first the runtime HUD
-must be verified working.
+Implemented and verified end to end on screen (2026-07-09). The old `hud_editor`
+should eventually be replaced by an RmlUI editor UI.
 
 ## qw-webhud Findings
 
@@ -262,23 +273,24 @@ Helper: `powershell -ExecutionPolicy Bypass -File .\tools\extract_ezquake_hud_re
 
 ## Suggested Next Steps
 
-1. VISUAL VERIFICATION (user): run the client with game data, `hud_newhudeditor 1`,
-   confirm the minimal HUD draws. Report console output if not. Known risk areas:
-   shader is `#version 330 core` (needs a modern GL context), scissor coordinate
-   mapping, and the file interface being cwd-relative.
+1. DONE (2026-07-09): visual verification passed - see Progress Log.
 
-2. FileInterface over ezQuake's VFS (`FS_OpenVFS` / `VFS_READ` / ...), so fonts
+2. Gate the classic/new HUD on `!HUD_RmlUi_ShouldDrawClassicHud()` in
+   `cl_screen.c` (`SCR_DrawNewHudElements` / `SCR_DrawElements`) so the new HUD
+   can be shown alone. Currently both draw simultaneously.
+
+4. FileInterface over ezQuake's VFS (`FS_OpenVFS` / `VFS_READ` / ...), so fonts
    and RML load from the game filesystem/paks instead of cwd-relative paths.
 
-3. Expand the GameDataModel to the full field set the legacy `ui/rml/hud/hud.rml`
+5. Expand the GameDataModel to the full field set the legacy `ui/rml/hud/hud.rml`
    expects (armor_type, per-type ammo shells/nails/rockets/cells, weapon
    ownership flags, notify lines, level stats, speed, clock). Use qw-webhud
    PROTOCOL.md as the checklist. Then switch the default document to hud.rml.
 
-4. Wire `RenderInterfaceGL::LoadTexture` for external image files (via the VFS
+6. Wire `RenderInterfaceGL::LoadTexture` for external image files (via the VFS
    file interface), for RML `<img>`/`decorator: image(...)`.
 
-5. Input routing / editor: only after the runtime HUD is solid, design the RmlUI
+7. Input routing / editor: only after the runtime HUD is solid, design the RmlUI
    replacement for the visual `hud_editor`.
 
 ## Warnings
