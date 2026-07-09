@@ -421,5 +421,21 @@ void RenderInterfaceGL::Shutdown()
 	initialised_ = false;
 }
 
+void RenderInterfaceGL::OnContextLost()
+{
+	/* Delete owned GL objects while the old context is still current. */
+	Shutdown();
+
+	/*
+	 * Force a clean re-initialisation against the new context: entry points
+	 * are reloaded (proc addresses may change between contexts) and a prior
+	 * init failure no longer applies.
+	 */
+	g_gl_loaded = false;
+	init_failed_ = false;
+	in_frame_ = false;
+	viewport_height_ = 0;
+}
+
 } // namespace rmlui
 } // namespace ezquake

@@ -25,6 +25,17 @@ extern cvar_t hud_newhudeditor;
 
 void HUD_RmlUi_Init(void);
 void HUD_RmlUi_Shutdown(void);
+
+/*
+ * Video/GL teardown hook. Call from VID_Shutdown() BEFORE R_Shutdown() /
+ * SDL_GL_DeleteContext(), while the GL context is still current.
+ *   restart != 0 (vid_restart): releases every GL resource (RmlUi textures
+ *     and compiled geometry, plus the render interface's own objects) but
+ *     keeps RmlUi, the context and documents alive; everything is lazily
+ *     recreated against the new GL context.
+ *   restart == 0 (full quit): performs the full HUD_RmlUi_Shutdown().
+ */
+void HUD_RmlUi_VidShutdown(int restart);
 void HUD_RmlUi_Frame(double dt);
 void HUD_RmlUi_Render(void);
 void HUD_RmlUi_Resize(int width, int height);

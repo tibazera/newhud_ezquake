@@ -739,10 +739,15 @@ static void SCR_DrawElements(void)
 	extern qbool  sb_showscores,  sb_showteamscores;
 	extern cvar_t	scr_menudrawhud;
 
-	if (scr_drawloading) 
+	if (scr_drawloading)
 	{
 		SCR_DrawLoading ();
-		Sbar_Draw ();
+#ifdef USE_RMLUI
+		if (HUD_RmlUi_ShouldDrawClassicHud())
+#endif
+		{
+			Sbar_Draw ();
+		}
 		HUD_Draw ();		// HUD -> hexum
 	}
 	else 
@@ -819,7 +824,12 @@ static void SCR_DrawElements(void)
 				if (CL_MultiviewEnabled())
 					SCR_DrawMultiviewOverviewElements ();
 
-				Sbar_Draw();
+#ifdef USE_RMLUI
+				if (HUD_RmlUi_ShouldDrawClassicHud())
+#endif
+				{
+					Sbar_Draw();
+				}
 				HUD_Draw();
 				HUD_Editor_Draw();
 
@@ -994,7 +1004,11 @@ void SCR_UpdateScreenHudOnly(void)
 		HUD_RmlUi_Resize(vid.width, vid.height);
 		HUD_RmlUi_SyncGameState(cl.stats, MAX_CL_STATS, cl.stats[STAT_ITEMS], cl.intermission, cl.gametype, MAX_CLIENTS, cl.levelname, cl.time);
 #endif
-		if (scr_newHud.value != 1) {
+		if (scr_newHud.value != 1
+#ifdef USE_RMLUI
+			&& HUD_RmlUi_ShouldDrawClassicHud()
+#endif
+		) {
 			SCR_DrawNewHudElements();
 		}
 

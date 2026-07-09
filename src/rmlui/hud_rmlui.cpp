@@ -21,6 +21,7 @@ extern "C" {
 
 #include "hud_rmlui.h"
 #include "render_interface_gl.h"
+#include "file_interface_vfs.h"
 
 cvar_t hud_newhudeditor = {"hud_newhudeditor", "0"};
 cvar_t hud_newhudeditor_doc = {"hud_newhudeditor_doc", "ui/rml/hud/minimal.rml"};
@@ -60,6 +61,7 @@ struct RmlHudState {
 
 	SystemInterfaceEz* system_interface = nullptr;
 	ezquake::rmlui::RenderInterfaceGL* render_interface = nullptr;
+	ezquake::rmlui::FileInterfaceVFS* file_interface = nullptr;
 	Rml::Context* context = nullptr;
 	Rml::DataModelHandle data_model;
 	Rml::ElementDocument* document = nullptr;
@@ -183,12 +185,15 @@ void HUD_RmlUi_Init(void)
 
 	g_hud.system_interface = new SystemInterfaceEz();
 	g_hud.render_interface = new ezquake::rmlui::RenderInterfaceGL();
+	g_hud.file_interface = new ezquake::rmlui::FileInterfaceVFS();
 
 	Rml::SetSystemInterface(g_hud.system_interface);
 	Rml::SetRenderInterface(g_hud.render_interface);
+	Rml::SetFileInterface(g_hud.file_interface);
 
 	if (!Rml::Initialise()) {
 		Com_Printf("RmlUI HUD: ERROR Rml::Initialise() failed\n");
+		delete g_hud.file_interface;
 		delete g_hud.render_interface;
 		delete g_hud.system_interface;
 		g_hud = RmlHudState{};
@@ -211,16 +216,45 @@ void HUD_RmlUi_Shutdown(void)
 		return;
 	}
 
-	/* Release GL resources while the context is still current. */
+	/*
+	 * Rml::Shutdown destroys all contexts/documents, releasing their GL
+	 * resources through the render interface - so it must run while the GL
+	 * context is still current, and before the interface's own teardown.
+	 */
+	Rml::Shutdown();
+
 	if (g_hud.render_interface) {
 		g_hud.render_interface->Shutdown();
 	}
 
-	/* Rml::Shutdown destroys all contexts. */
-	Rml::Shutdown();
+	delete g_hud.file_interface;
 	delete g_hud.render_interface;
 	delete g_hud.system_interface;
 	g_hud = RmlHudState{};
+}
+
+void HUD_RmlUi_VidShutdown(int restart)
+{
+	if (!g_hud.initialized) {
+		return;
+	}
+
+	if (!restart) {
+		HUD_RmlUi_Shutdown();
+		return;
+	}
+
+	/*
+	 * vid_restart: the GL context is about to be destroyed and recreated.
+	 * Release every GL-backed resource now, while the old context is still
+	 * current. RmlUi re-generates textures and re-compiles geometry on
+	 * demand, and the render interface re-initialises lazily, so contexts
+	 * and documents survive the restart untouched.
+	 */
+	Rml::ReleaseCompiledGeometry(g_hud.render_interface);
+	Rml::ReleaseTextures(g_hud.render_interface);
+	g_hud.render_interface->OnContextLost();
+	Com_Printf("RmlUI HUD: GL resources released for video restart\n");
 }
 
 void HUD_RmlUi_Frame(double dt)

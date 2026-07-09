@@ -47,6 +47,9 @@ void Sys_ActiveAppChanged (void);
 #include "ezquake-icon.c"
 #include "keys.h"
 #include "tr_types.h"
+#ifdef USE_RMLUI
+#include "rmlui/hud_rmlui.h"
+#endif
 #include "input.h"
 #include "rulesets.h"
 #include "utils.h"
@@ -952,6 +955,12 @@ void VID_Shutdown(qbool restart)
 	IN_DeactivateMouse();
 
 	SDL_StopTextInput();
+
+#ifdef USE_RMLUI
+	/* Release RmlUI GL resources (or fully shut down on quit) while the GL
+	 * context is still current - before R_Shutdown/SDL_GL_DeleteContext. */
+	HUD_RmlUi_VidShutdown(restart);
+#endif
 
 #ifdef X11_GAMMA_WORKAROUND
 	if (vid_gamma_workaround.integer) {

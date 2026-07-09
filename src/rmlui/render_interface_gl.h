@@ -34,6 +34,14 @@ public:
 	// Releases all GL resources. Call while the GL context is still valid.
 	void Shutdown();
 
+	// GL context is about to be destroyed (vid_restart). Deletes the owned
+	// GL objects while the context is still current, then resets to the
+	// uninitialised state and forces GL entry points to be reloaded on next
+	// use (proc addresses may differ in the new context). Callers must have
+	// already released RmlUi-owned resources (Rml::ReleaseCompiledGeometry /
+	// Rml::ReleaseTextures) so no stale handles survive.
+	void OnContextLost();
+
 	// -- Required interface (RmlUi 6.x pure virtuals) --
 
 	Rml::CompiledGeometryHandle CompileGeometry(

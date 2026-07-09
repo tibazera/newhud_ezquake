@@ -590,6 +590,8 @@ if(USE_RMLUI)
             ${SOURCE_DIR}/rmlui/hud_rmlui.cpp
             ${SOURCE_DIR}/rmlui/render_interface_gl.h
             ${SOURCE_DIR}/rmlui/render_interface_gl.cpp
+            ${SOURCE_DIR}/rmlui/file_interface_vfs.h
+            ${SOURCE_DIR}/rmlui/file_interface_vfs.cpp
     )
 endif()
 source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/common_hud" FILES ${common_hud})
