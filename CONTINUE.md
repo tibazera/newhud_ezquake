@@ -116,6 +116,36 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
+### 2026-07-09 - M2 GameDataModel complete (code done, PENDING user acceptance)
+
+Commits `eaa2a611` (FILEVERSION fix) + M2 feature commit. The "hud" data
+model now carries the full contract in src/rmlui/game_data_model.*:
+me-fields (health/armor/armor_type/weapons/has_*/per-type ammo/powerups/
+keys/name/team/frags/ping/pl/speed), match (map short+title, MM:SS clock
+with standby/countdown semantics, gametype/teamplay/limits/intermission/
+paused), client (fps/spectator/demo/mvd) and a players[] array for
+data-for scoreboards. Reads engine globals directly (HUD_Stats, cl.simvel,
+cl.players, cls.fps, host_mapname per the field survey); per-variable
+dirty tracking against a snapshot (no DirtyAllVariables). The C hook is
+now HUD_RmlUi_SyncGameState(void). minimal.rml shows the expanded fields.
+Deferral (deliberate): TP teaminfo -> M3 with its documents.
+
+Build fix discovered: FILEVERSION in ezQuake.rc got the git hash as a
+component (no upstream tags here); hashes matching <digits>e<digits>
+even crash RC. Components are now sanitized to integers in CMakeLists.
+
+NOTE: ui/CLAUDE.md is legacy documentation from the old vkQuake bridge -
+its commands (ui_reload/ui_debugger) and the "game"/"cvars" models do NOT
+exist in this port (ours: "hud" model, hud_newhudeditor_reload). Its RCSS
+constraint notes (rgba alpha 0-255 etc.) remain useful. The legacy
+hud.rml expects data-model="game"; M3 will reconcile naming.
+
+M2 acceptance test (user, on screen): run a map with hud_newhudeditor 1 -
+the panel must show weapon label + ammo switching as you change weapons
+(keys 1-8), per-type ammo counts, speed changing as you move, fps, the
+match clock ticking, armor coloured green/yellow/red by type, and QUAD/
+PENT/RING appearing when picked up.
+
 ### 2026-07-09 - M1 ACCEPTED by the user on screen
 
 After the GL state-cache fix: fullscreen works, hud_newhudeditor 0<->1
