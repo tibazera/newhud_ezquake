@@ -592,6 +592,8 @@ if(USE_RMLUI)
             ${SOURCE_DIR}/rmlui/render_interface_gl.cpp
             ${SOURCE_DIR}/rmlui/file_interface_vfs.h
             ${SOURCE_DIR}/rmlui/file_interface_vfs.cpp
+            ${SOURCE_DIR}/rmlui/game_data_model.h
+            ${SOURCE_DIR}/rmlui/game_data_model.cpp
     )
 endif()
 source_group(TREE ${SOURCE_DIR} PREFIX "Source Files/common_hud" FILES ${common_hud})
@@ -822,6 +824,16 @@ get_target_property(version_minor git_version VERSION_MINOR)
 get_target_property(version_patch git_version VERSION_PATCH)
 get_target_property(version_build git_version REVISION)
 get_target_property(version_commit git_version COMMIT)
+
+# FILEVERSION requires four integers. Without upstream tags, git describe
+# falls back to a commit hash and GitUtils propagates it into the version
+# components; a hash like "6522e4dd" then breaks the RC compiler (parsed
+# as a malformed float exponent). Sanitize every component to a number.
+foreach(component version_major version_minor version_patch version_build)
+    if(NOT "${${component}}" MATCHES "^[0-9]+$")
+        set(${component} 0)
+    endif()
+endforeach()
 
 # macOS icon
 set(macos_icon "${PROJECT_SOURCE_DIR}/dist/macOS/ezquake.icns")
