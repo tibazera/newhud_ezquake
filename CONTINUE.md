@@ -116,7 +116,19 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - Feedback: ESC fix, picker fits, per-element widgets (PENDING)
+### 2026-07-09 - Scoreboard redesign + edit config panel (PENDING acceptance)
+
+Commit `b8add5c4`. Scoreboard v3: header band (map title/short/clock),
+column header, team-colour accent bar + frags coloured by player colour,
+roomy columns, dimmed spectators. Edit-mode config panel (#configpanel):
+clickable show/hide for every widget (model widgets[] + toggle/hidden
+accessors, .whidden class, persisted as "hide <id>" lines in the layout
+file). Answers "options for where death messages appear": w_notify
+("Mensagens (mortes/chat)") is toggleable + draggable. Config panel uses
+the same edit-mode input routing; clicks on it (a non-widget) fire the
+listener without starting a drag.
+
+### 2026-07-09 - Feedback: ESC fix, picker fits, per-element widgets (earlier)
 
 Commit `3f73e776`. (1) ESC now exits the style picker (its key handler
 was gated on edit-mode only; picker runs at mode 1). (2) Picker cards
