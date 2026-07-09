@@ -116,7 +116,21 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - Scoreboard redesign + edit config panel (PENDING acceptance)
+### 2026-07-09 - Reverted to CLASSIC scoreboard/overlay (PENDING acceptance)
+
+Commit `3f1ec758`. User: the original ezQuake scoreboard is much better;
+keep it, refine from there. Map (agent): TAB scoreboard lives inside
+Sbar_Draw() (Sbar_DeathmatchOverlay/Sbar_TeamOverlay, sbar.c), which the
+gate suppressed; but with +showscores held Sbar_Draw() skips its own
+bottom bar. Fix: allow Sbar_Draw() through the gate when
+sb_showscores||sb_showteamscores (cl_screen.c:838). Classic team overlay
+(SCR_Draw_TeamInfo/scr_teaminfo) and kill feed (VX_TrackerThink/r_tracker)
+already draw (never gated). Removed the custom RML w_scores. Next:
+awaiting the user's reference-HUD screenshot to map the full competitive
+composition; open question is widget granularity (split weapon bar / ammo
+counts into individual draggables, or keep as groups).
+
+### 2026-07-09 - Scoreboard redesign + edit config panel (superseded)
 
 Commit `b8add5c4`. Scoreboard v3: header band (map title/short/clock),
 column header, team-colour accent bar + frags coloured by player colour,
