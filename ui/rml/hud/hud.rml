@@ -15,10 +15,12 @@
         .digslot { display: inline-block; width: 40px; height: 48px; vertical-align: bottom; }
         .digslot img { width: 40px; height: 48px; }
 
-        /* ---- health (face + digits) ---- */
-        #w_health { left: 50%; margin-left: -84px; bottom: 12px; }
+        /* ---- face (separate, draggable) ---- */
+        #w_face { left: 50%; margin-left: -150px; bottom: 12px; }
+        /* ---- health digits (separate) ---- */
+        #w_health { left: 50%; margin-left: -96px; bottom: 12px; }
         /* ---- armor ---- */
-        #w_armor { left: 50%; margin-left: -290px; bottom: 12px; }
+        #w_armor { left: 50%; margin-left: -300px; bottom: 12px; }
         .ga img.tint, .arval.ga { color: #40c040; }
         /* ---- ammo ---- */
         #w_ammo { left: 50%; margin-left: 120px; bottom: 12px; }
@@ -51,11 +53,15 @@
         #w_frags { right: 18px; bottom: 14px; font-size: 26dp; font-weight: bold; }
         #w_speed { left: 18px; bottom: 14px; font-size: 15dp; color: #b0b0b0; }
         #w_clock {
-            right: 18px; top: 14px; padding: 6px 14px; text-align: right;
-            background-color: #00000070; border-radius: 4px; font-size: 16dp;
+            right: 18px; top: 14px; padding: 4px 12px; text-align: right;
+            background-color: #00000070; border-radius: 4px;
         }
-        #w_clock .clock { font-size: 24dp; font-weight: bold; display: block; }
-        #w_clock .net { color: #b0b0b0; display: block; }
+        #w_clock .clock { font-size: 24dp; font-weight: bold; }
+        #w_fps {
+            right: 18px; top: 52px; padding: 4px 12px; text-align: right;
+            background-color: #00000070; border-radius: 4px; font-size: 15dp; color: #b0b0b0;
+        }
+        #w_fps .net { display: block; }
 
         /* ---- notify ---- */
         #w_notify { left: 12px; top: 10px; width: 45%; font-size: 15dp; color: #e8e8e8; }
@@ -186,6 +192,9 @@
 
     <div id="w_clock" class="widget">
         <span class="clock">{{ match_time }}</span>
+    </div>
+
+    <div id="w_fps" class="widget">
         <span class="net">{{ fps }} fps &nbsp; {{ ping }} ms</span>
         <span class="net" data-if="spectator">SPEC</span>
         <span class="net" data-if="demo_playback">DEMO</span>
@@ -210,8 +219,11 @@
         <span class="digslot"><img data-if="armor_d1 != ''" data-attr-src="iconpath + armor_d1"/></span>
     </div>
 
-    <div id="w_health" class="widget">
+    <div id="w_face" class="widget">
         <img class="icon" data-attr-src="iconpath + face_icon"/>
+    </div>
+
+    <div id="w_health" class="widget">
         <span class="digslot"><img data-if="health_d100 != ''" data-attr-src="iconpath + health_d100"/></span>
         <span class="digslot"><img data-if="health_d10 != ''" data-attr-src="iconpath + health_d10"/></span>
         <span class="digslot"><img data-if="health_d1 != ''" data-attr-src="iconpath + health_d1"/></span>

@@ -186,15 +186,17 @@ bool preview_active = false;
 /* Widget catalog (id + label) and persistent hidden set. */
 struct WidgetDef { const char* id; const char* label; };
 const WidgetDef WIDGET_DEFS[] = {
+	{"w_face",       "Rosto"},
 	{"w_health",     "Vida"},
 	{"w_armor",      "Armadura"},
 	{"w_ammo",       "Munição (arma ativa)"},
-	{"w_weapons",    "Barra de armas"},
 	{"w_ammocounts", "Munição (por tipo)"},
+	{"w_weapons",    "Barra de armas"},
 	{"w_items",      "Itens / Powerups"},
 	{"w_frags",      "Frags"},
 	{"w_speed",      "Velocidade"},
-	{"w_clock",      "Relógio / FPS"},
+	{"w_clock",      "Relógio"},
+	{"w_fps",        "FPS / Ping"},
 	{"w_notify",     "Mensagens (mortes / chat)"},
 	{"w_centerprint","Avisos centrais"},
 };
