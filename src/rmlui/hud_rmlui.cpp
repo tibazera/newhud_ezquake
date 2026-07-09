@@ -23,6 +23,7 @@ extern "C" {
 #include "render_interface_gl.h"
 
 cvar_t hud_newhudeditor = {"hud_newhudeditor", "0"};
+cvar_t hud_newhudeditor_doc = {"hud_newhudeditor_doc", "ui/rml/hud/minimal.rml"};
 
 namespace {
 
@@ -61,6 +62,8 @@ struct RmlHudState {
 	ezquake::rmlui::RenderInterfaceGL* render_interface = nullptr;
 	Rml::Context* context = nullptr;
 	Rml::DataModelHandle data_model;
+	Rml::ElementDocument* document = nullptr;
+	bool fonts_loaded = false;
 };
 
 RmlHudState g_hud;
@@ -102,6 +105,42 @@ void CreateGameDataModel()
 	g_hud.data_model = constructor.GetModelHandle();
 }
 
+void LoadFonts()
+{
+	if (g_hud.fonts_loaded) {
+		return;
+	}
+	/* Paths resolve through RmlUi's file interface, relative to the client
+	 * working directory - the ui/ tree must be present in the game dir. */
+	const bool regular = Rml::LoadFontFace("ui/fonts/LatoLatin-Regular.ttf");
+	Rml::LoadFontFace("ui/fonts/LatoLatin-Bold.ttf");
+	if (!regular) {
+		Com_Printf("RmlUI HUD: WARNING could not load ui/fonts/LatoLatin-Regular.ttf\n");
+	}
+	g_hud.fonts_loaded = true;
+}
+
+void LoadHudDocument()
+{
+	if (!g_hud.context) {
+		return;
+	}
+	if (g_hud.document) {
+		g_hud.context->UnloadDocument(g_hud.document);
+		g_hud.document = nullptr;
+	}
+
+	const char* path = hud_newhudeditor_doc.string;
+	g_hud.document = g_hud.context->LoadDocument(path);
+	if (g_hud.document) {
+		g_hud.document->Show();
+		Com_Printf("RmlUI HUD: loaded document %s\n", path);
+	}
+	else {
+		Com_Printf("RmlUI HUD: ERROR failed to load document %s\n", path);
+	}
+}
+
 void EnsureContext()
 {
 	if (g_hud.context || !g_hud.initialized || g_hud.width <= 0 || g_hud.height <= 0) {
@@ -112,6 +151,7 @@ void EnsureContext()
 	if (g_hud.context) {
 		Com_Printf("RmlUI HUD: context created (%dx%d)\n", g_hud.width, g_hud.height);
 		CreateGameDataModel();
+		LoadHudDocument();
 	}
 	else {
 		Com_Printf("RmlUI HUD: ERROR failed to create context\n");
@@ -121,6 +161,19 @@ void EnsureContext()
 } // namespace
 
 extern "C" {
+
+static void HUD_RmlUi_Reload_f(void)
+{
+	if (!g_hud.initialized) {
+		Com_Printf("RmlUI HUD: not initialised\n");
+		return;
+	}
+	if (!g_hud.context) {
+		Com_Printf("RmlUI HUD: no context yet (enable hud_newhudeditor 1)\n");
+		return;
+	}
+	LoadHudDocument();
+}
 
 void HUD_RmlUi_Init(void)
 {
@@ -141,6 +194,11 @@ void HUD_RmlUi_Init(void)
 		g_hud = RmlHudState{};
 		return;
 	}
+
+	LoadFonts();
+
+	Cvar_Register(&hud_newhudeditor_doc);
+	Cmd_AddCommand("hud_newhudeditor_reload", HUD_RmlUi_Reload_f);
 
 	g_hud.initialized = true;
 	Com_Printf("RmlUI HUD: initialised (RmlUi %s). Set hud_newhudeditor 1 to use it.\n",

@@ -1,0 +1,38 @@
+<rml>
+<head>
+    <title>HUD (minimal)</title>
+    <style>
+        body {
+            font-family: LatoLatin;
+            color: #ffffff;
+            width: 100%;
+            height: 100%;
+        }
+        #panel {
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            padding: 12px 20px;
+            background-color: #000000c0;
+            border-radius: 6px;
+        }
+        .row { display: block; font-size: 22dp; }
+        .stat { font-size: 40dp; font-weight: bold; }
+        .low { color: #ff4040; }
+        .muted { color: #b0b0b0; font-size: 16dp; }
+    </style>
+</head>
+
+<!--
+    Minimal proof-of-life HUD wired to the "hud" GameDataModel
+    (Story: ezQuake OpenGL RmlUI HUD port). Shows live synced values.
+-->
+<body data-model="hud">
+    <div id="panel">
+        <div class="row muted">map {{ map }} &nbsp; t {{ time }}</div>
+        <div class="row stat" data-class-low="health &lt; 25">HP {{ health }}</div>
+        <div class="row stat" data-if="armor > 0">AR {{ armor }}</div>
+        <div class="row stat">AM {{ ammo }}</div>
+    </div>
+</body>
+</rml>
