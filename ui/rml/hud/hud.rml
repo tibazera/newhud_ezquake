@@ -12,25 +12,26 @@
             background-color: #00000098;
             border-radius: 6px;
         }
+        img { image-color: #ffffffff; }
 
-        /* ---- bottom-center: armor / health / ammo trio ---- */
+        /* ---- bottom-center: armor / face+health / ammo trio ---- */
         #trio {
             position: absolute;
             bottom: 18px;
             left: 50%;
-            margin-left: -240px;
-            width: 480px;
+            margin-left: -280px;
+            width: 560px;
             text-align: center;
         }
         .cell {
             display: inline-block;
-            width: 140px;
-            padding: 6px 0;
+            width: 170px;
+            padding: 8px 0;
             margin: 0 4px;
             vertical-align: bottom;
         }
-        .cell .big { font-size: 44dp; font-weight: bold; display: block; }
-        .cell .tag { font-size: 14dp; color: #b0b0b0; display: block; }
+        .cell img.icon { width: 48px; height: 48px; vertical-align: middle; }
+        .cell .big { font-size: 42dp; font-weight: bold; vertical-align: middle; margin-left: 8px; }
         .low { color: #ff4040; }
         .mega { color: #60c0ff; }
         .ga { color: #40c040; }
@@ -40,53 +41,52 @@
         /* ---- weapon bar above the trio ---- */
         #weapons {
             position: absolute;
-            bottom: 96px;
+            bottom: 104px;
             left: 50%;
-            margin-left: -240px;
-            width: 480px;
+            margin-left: -280px;
+            width: 560px;
             text-align: center;
         }
         .wslot {
             display: inline-block;
-            width: 44px;
-            padding: 3px 0;
-            margin: 0 2px;
-            font-size: 16dp;
-            color: #707070;
+            padding: 4px 4px;
+            margin: 0 1px;
             background-color: #00000060;
             border-radius: 4px;
-            text-align: center;
         }
-        .wslot.owned { color: #e0e0e0; background-color: #00000098; }
-        .wslot.active { color: #ffffff; background-color: #205080d0; font-weight: bold; }
+        .wslot img { width: 48px; height: 32px; image-color: #ffffff50; }
+        .wslot.owned img { image-color: #ffffffff; }
+        .wslot.owned { background-color: #00000098; }
+        .wslot.active { background-color: #205080d0; }
+        .wslot .axe {
+            display: inline-block; width: 48px; font-size: 15dp;
+            color: #707070; text-align: center; padding: 8px 0;
+        }
+        .wslot.owned .axe { color: #e0e0e0; }
 
         /* ---- bottom-right: per-type ammo + frags ---- */
         #inventory {
             position: absolute;
             right: 18px;
             bottom: 18px;
-            padding: 8px 14px;
-            font-size: 16dp;
+            padding: 8px 12px;
+            font-size: 17dp;
             text-align: right;
         }
-        #inventory .arow { display: block; color: #d0d0d0; }
-        #inventory .frags { display: block; font-size: 22dp; font-weight: bold; margin-top: 4px; }
+        #inventory .arow { display: block; color: #e0e0e0; margin: 2px 0; }
+        #inventory .arow img { width: 24px; height: 24px; vertical-align: middle; margin-right: 6px; }
+        #inventory .count { display: inline-block; width: 44px; vertical-align: middle; text-align: right; }
+        #inventory .frags { display: block; font-size: 22dp; font-weight: bold; margin-top: 6px; }
 
-        /* ---- bottom-left: powerups / keys / speed ---- */
+        /* ---- bottom-left: powerups / keys / sigils / speed ---- */
         #status {
             position: absolute;
             left: 18px;
             bottom: 18px;
-            padding: 8px 14px;
-            font-size: 18dp;
+            padding: 8px 12px;
         }
-        #status .prow { display: block; font-weight: bold; }
-        .quad { color: #60a0ff; }
-        .pent { color: #ff5050; }
-        .ring { color: #e0e060; }
-        .suit { color: #40c040; }
-        .keys { color: #d0b040; }
-        #status .speed { display: block; color: #b0b0b0; font-size: 15dp; }
+        #status img { width: 32px; height: 32px; margin: 2px; vertical-align: middle; }
+        #status .speed { display: block; color: #b0b0b0; font-size: 15dp; margin-top: 4px; }
 
         /* ---- top-right: clock / fps / ping ---- */
         #meta {
@@ -145,11 +145,10 @@
 </head>
 
 <!--
-    Text-first HUD bound to the "hud" GameDataModel (M3).
-    Element parity vs the classic registry (docs/hud-element-registry.csv):
-    health/armor(+type colours)/ammo trio, gun2-8 bar, ammo1-4, frags,
-    gameclock, fps/ping, speed, quad/pent/ring/suit, key1/key2,
-    centerprint, notify, scoreboard (+showscores) with map name.
+    Classic-icon HUD bound to the "hud" GameDataModel (M3.5).
+    Icons are the original Quake sbar graphics, extracted from gfx.wad
+    into icons/ (see CONTINUE.md). Faces/ammo boxes switch through the
+    derived face_icon / ammo_icon model fields.
 -->
 <body data-model="hud">
 
@@ -166,56 +165,60 @@
         <span class="net" data-if="demo_playback">DEMO</span>
     </div>
 
-    <!-- weapon bar: 8 slots, owned + active states -->
+    <!-- weapon bar: axe + 7 classic weapon pics, owned/active states -->
     <div id="weapons">
-        <span class="wslot" data-class-owned="has_axe" data-class-active="weapon_num == 1">AXE</span>
-        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2">SG</span>
-        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3">SSG</span>
-        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4">NG</span>
-        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5">SNG</span>
-        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6">GL</span>
-        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7">RL</span>
-        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8">LG</span>
+        <span class="wslot" data-class-owned="has_axe" data-class-active="weapon_num == 1"><span class="axe">AXE</span></span>
+        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2"><img data-attr-src="weapon_num == 2 ? 'icons/inv2_shotgun.tga' : 'icons/inv_shotgun.tga'"/></span>
+        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3"><img data-attr-src="weapon_num == 3 ? 'icons/inv2_sshotgun.tga' : 'icons/inv_sshotgun.tga'"/></span>
+        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4"><img data-attr-src="weapon_num == 4 ? 'icons/inv2_nailgun.tga' : 'icons/inv_nailgun.tga'"/></span>
+        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5"><img data-attr-src="weapon_num == 5 ? 'icons/inv2_snailgun.tga' : 'icons/inv_snailgun.tga'"/></span>
+        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6"><img data-attr-src="weapon_num == 6 ? 'icons/inv2_rlaunch.tga' : 'icons/inv_rlaunch.tga'"/></span>
+        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7"><img data-attr-src="weapon_num == 7 ? 'icons/inv2_srlaunch.tga' : 'icons/inv_srlaunch.tga'"/></span>
+        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8"><img data-attr-src="weapon_num == 8 ? 'icons/inv2_lightng.tga' : 'icons/inv_lightng.tga'"/></span>
     </div>
 
-    <!-- armor / health / ammo -->
+    <!-- armor / face+health / ammo -->
     <div id="trio">
-        <div class="cell box" data-if="armor > 0"
-             data-class-ga="armor_type == 1"
-             data-class-ya="armor_type == 2"
-             data-class-ra="armor_type == 3">
-            <span class="big">{{ armor }}</span>
-            <span class="tag">ARMOR</span>
+        <div class="cell box" data-if="armor > 0">
+            <img class="icon" data-if="armor_type == 1" src="icons/sb_armor1.tga"/>
+            <img class="icon" data-if="armor_type == 2" src="icons/sb_armor2.tga"/>
+            <img class="icon" data-if="armor_type == 3" src="icons/sb_armor3.tga"/>
+            <span class="big"
+                  data-class-ga="armor_type == 1"
+                  data-class-ya="armor_type == 2"
+                  data-class-ra="armor_type == 3">{{ armor }}</span>
         </div>
         <div class="cell box">
+            <img class="icon" data-attr-src="'icons/' + face_icon + '.tga'"/>
             <span class="big" data-class-low="health &lt; 25" data-class-mega="health &gt; 100">{{ health }}</span>
-            <span class="tag">HEALTH</span>
         </div>
         <div class="cell box">
+            <img class="icon" data-if="weapon_num &gt; 1" data-attr-src="'icons/' + ammo_icon + '.tga'"/>
             <span class="big" data-class-low="ammo &lt; 10">{{ ammo }}</span>
-            <span class="tag">{{ weapon_label }}</span>
         </div>
     </div>
 
     <!-- per-type ammo + frags -->
     <div id="inventory" class="box">
-        <span class="arow">shells {{ shells }}</span>
-        <span class="arow">nails {{ nails }}</span>
-        <span class="arow">rockets {{ rockets }}</span>
-        <span class="arow">cells {{ cells }}</span>
+        <span class="arow"><img src="icons/sb_shells.tga"/><span class="count">{{ shells }}</span></span>
+        <span class="arow"><img src="icons/sb_nails.tga"/><span class="count">{{ nails }}</span></span>
+        <span class="arow"><img src="icons/sb_rocket.tga"/><span class="count">{{ rockets }}</span></span>
+        <span class="arow"><img src="icons/sb_cells.tga"/><span class="count">{{ cells }}</span></span>
         <span class="frags">frags {{ frags }}</span>
     </div>
 
-    <!-- powerups / keys / speed -->
+    <!-- powerups / keys / sigils / speed -->
     <div id="status" class="box">
-        <span class="prow quad" data-if="quad">QUAD</span>
-        <span class="prow pent" data-if="pent">PENT</span>
-        <span class="prow ring" data-if="ring">RING</span>
-        <span class="prow suit" data-if="suit">SUIT</span>
-        <span class="prow keys" data-if="key1 || key2">
-            <span data-if="key1">SILVER </span>
-            <span data-if="key2">GOLD</span>
-        </span>
+        <img data-if="quad" src="icons/sb_quad.tga"/>
+        <img data-if="pent" src="icons/sb_invuln.tga"/>
+        <img data-if="ring" src="icons/sb_invis.tga"/>
+        <img data-if="suit" src="icons/sb_suit.tga"/>
+        <img data-if="key1" src="icons/sb_key1.tga"/>
+        <img data-if="key2" src="icons/sb_key2.tga"/>
+        <img data-if="sigil1" src="icons/sb_sigil1.tga"/>
+        <img data-if="sigil2" src="icons/sb_sigil2.tga"/>
+        <img data-if="sigil3" src="icons/sb_sigil3.tga"/>
+        <img data-if="sigil4" src="icons/sb_sigil4.tga"/>
         <span class="speed">{{ speed }} ups</span>
     </div>
 

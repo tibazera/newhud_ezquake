@@ -79,6 +79,12 @@ struct HudModel {
 	bool suit = false;
 	bool key1 = false;
 	bool key2 = false;
+	bool sigil1 = false;
+	bool sigil2 = false;
+	bool sigil3 = false;
+	bool sigil4 = false;
+	Rml::String face_icon;     // classic face lump for current state (face1..face5, face_quad, ...)
+	Rml::String ammo_icon;     // ammo-box lump for the active weapon (sb_shells...)
 	Rml::String name;
 	Rml::String team;
 	int frags = 0;
@@ -160,6 +166,42 @@ int ArmorType(int stat_items)
 	return 0;
 }
 
+/* Classic face selection (sbar.c): powerup faces first, then one of
+ * face1 (healthy) .. face5 (near death) by health/20. Pain variants
+ * (face_pN, need last-damage timing) are a later refinement. */
+const char* FaceIcon(int health, int stat_items)
+{
+	if ((stat_items & IT_INVISIBILITY) && (stat_items & IT_INVULNERABILITY)) {
+		return "face_inv2";
+	}
+	if (stat_items & IT_INVULNERABILITY) {
+		return "face_invul2";
+	}
+	if (stat_items & IT_INVISIBILITY) {
+		return "face_invis";
+	}
+	if (stat_items & IT_QUAD) {
+		return "face_quad";
+	}
+	int f = health / 20;
+	if (f < 0) f = 0;
+	if (f > 4) f = 4;
+	static const char* faces[5] = {"face5", "face4", "face3", "face2", "face1"};
+	return faces[f];
+}
+
+/* Ammo box icon for the active weapon's ammo type. */
+const char* AmmoIcon(int weapon_num)
+{
+	switch (weapon_num) {
+		case 2: case 3: return "sb_shells";
+		case 4: case 5: return "sb_nails";
+		case 6: case 7: return "sb_rocket";
+		case 8: return "sb_cells";
+		default: return "";
+	}
+}
+
 /* The player slot shown on screen: self, or the tracked player when
  * spectating/chasecam (same idiom as hud_speed.c / cl_view.c). */
 int DisplayedPlayerSlot()
@@ -206,6 +248,12 @@ void ReadEngineState(HudModel& m)
 	m.suit = (stat_items & IT_SUIT) != 0;
 	m.key1 = (stat_items & IT_KEY1) != 0;
 	m.key2 = (stat_items & IT_KEY2) != 0;
+	m.sigil1 = (stat_items & IT_SIGIL1) != 0;
+	m.sigil2 = (stat_items & IT_SIGIL2) != 0;
+	m.sigil3 = (stat_items & IT_SIGIL3) != 0;
+	m.sigil4 = (stat_items & IT_SIGIL4) != 0;
+	m.face_icon = FaceIcon(m.health, stat_items);
+	m.ammo_icon = AmmoIcon(m.weapon_num);
 
 	if (slot >= 0 && slot < MAX_CLIENTS) {
 		const player_info_t& info = cl.players[slot];
@@ -414,6 +462,12 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("suit", &data.suit);
 	constructor.Bind("key1", &data.key1);
 	constructor.Bind("key2", &data.key2);
+	constructor.Bind("sigil1", &data.sigil1);
+	constructor.Bind("sigil2", &data.sigil2);
+	constructor.Bind("sigil3", &data.sigil3);
+	constructor.Bind("sigil4", &data.sigil4);
+	constructor.Bind("face_icon", &data.face_icon);
+	constructor.Bind("ammo_icon", &data.ammo_icon);
 	constructor.Bind("name", &data.name);
 	constructor.Bind("team", &data.team);
 	constructor.Bind("frags", &data.frags);
@@ -492,6 +546,12 @@ void GameDataSync()
 	DirtyIfChanged("suit", data.suit, prev.suit);
 	DirtyIfChanged("key1", data.key1, prev.key1);
 	DirtyIfChanged("key2", data.key2, prev.key2);
+	DirtyIfChanged("sigil1", data.sigil1, prev.sigil1);
+	DirtyIfChanged("sigil2", data.sigil2, prev.sigil2);
+	DirtyIfChanged("sigil3", data.sigil3, prev.sigil3);
+	DirtyIfChanged("sigil4", data.sigil4, prev.sigil4);
+	DirtyIfChanged("face_icon", data.face_icon, prev.face_icon);
+	DirtyIfChanged("ammo_icon", data.ammo_icon, prev.ammo_icon);
 	DirtyIfChanged("name", data.name, prev.name);
 	DirtyIfChanged("team", data.team, prev.team);
 	DirtyIfChanged("frags", data.frags, prev.frags);
