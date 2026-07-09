@@ -50,6 +50,14 @@ void HUD_RmlUi_SyncGameState(void);
 int HUD_RmlUi_IsEnabled(void);
 int HUD_RmlUi_ShouldDrawClassicHud(void);
 
+/*
+ * Event push hooks (safe to call regardless of HUD state).
+ * Called from hud_centerprint.c so centerprint messages reach the data
+ * model with the classic timing semantics.
+ */
+void HUD_RmlUi_CenterPrint(const char* str);
+void HUD_RmlUi_CenterPrintClear(void);
+
 #ifdef __cplusplus
 }
 #endif

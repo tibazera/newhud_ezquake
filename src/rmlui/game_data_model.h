@@ -27,6 +27,10 @@ void GameDataSync();
 // Forget the model handle (context destroyed).
 void GameDataReset();
 
+// Centerprint push hooks (called from the engine via the C bridge).
+void GameDataCenterPrint(const char* str);
+void GameDataCenterPrintClear();
+
 } // namespace rmlui
 } // namespace ezquake
 

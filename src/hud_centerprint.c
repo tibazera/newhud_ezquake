@@ -23,6 +23,9 @@ $Id: cl_screen.c,v 1.156 2007-10-29 00:56:47 qqshka Exp $
 #include "keys.h"
 #include "menu.h"
 #include "hud.h"
+#ifdef USE_RMLUI
+#include "rmlui/hud_rmlui.h"
+#endif
 
 static cvar_t scr_centertime  = { "scr_centertime",  "2" };
 static cvar_t scr_centershift = { "scr_centershift", "0" };
@@ -43,6 +46,10 @@ void SCR_CenterPrint_Clear(void)
 	// Make sure no centerprint messages are left from previous level.
 	scr_centertime_off = 0;
 	memset(scr_centerstring_lines, 0, sizeof(scr_centerstring_lines));
+
+#ifdef USE_RMLUI
+	HUD_RmlUi_CenterPrintClear();
+#endif
 }
 
 void SCR_CenterPrint_Init(void)
@@ -64,6 +71,10 @@ void SCR_CenterPrint(const char *str)
 	scr_centertime_off = scr_centertime.value;
 	scr_centertime_start = cl.time;
 	memset(scr_centerstring_lines, 0, sizeof(scr_centerstring_lines));
+
+#ifdef USE_RMLUI
+	HUD_RmlUi_CenterPrint(str);
+#endif
 
 	// count the number of lines for centering
 	scr_center_lines = 0;

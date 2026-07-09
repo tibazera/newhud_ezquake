@@ -16,8 +16,15 @@
 #include <cstdio>
 #include <cstring>
 
-/* Engine console print, for diagnostics only. */
-extern "C" void Com_Printf(const char* fmt, ...);
+/*
+ * Engine headers (C linkage) AFTER RmlUi/SDL/STL includes - q_shared.h
+ * macros (min/max) poison C++ headers included later. Pulled in for the
+ * VFS-aware image loading used by LoadTexture (R_LoadImagePixels).
+ */
+extern "C" {
+#include "quakedef.h"
+#include "r_texture.h"
+}
 
 namespace {
 
@@ -378,11 +385,59 @@ void RenderInterfaceGL::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
 Rml::TextureHandle RenderInterfaceGL::LoadTexture(
 	Rml::Vector2i& texture_dimensions, const Rml::String& source)
 {
-	// External image files are not wired yet (fonts/solid colours come via
-	// GenerateTexture). Report failure so RmlUi skips the image.
-	(void)source;
-	texture_dimensions = Rml::Vector2i(0, 0);
-	return 0;
+	if (!EnsureInitialised()) {
+		texture_dimensions = Rml::Vector2i(0, 0);
+		return 0;
+	}
+
+	/*
+	 * R_LoadImagePixels resolves through the quake VFS (game dirs + paks),
+	 * trying .tga/.png/.jpg, and returns a top-down RGBA8 buffer allocated
+	 * with Q_malloc. RmlUi 6 renders with premultiplied alpha, so the raw
+	 * pixels are premultiplied before upload.
+	 */
+	int width = 0;
+	int height = 0;
+	byte* pixels = R_LoadImagePixels(source.c_str(), 0, 0, 0, &width, &height);
+	if (!pixels || width <= 0 || height <= 0) {
+		texture_dimensions = Rml::Vector2i(0, 0);
+		return 0;
+	}
+
+	const size_t pixel_count = static_cast<size_t>(width) * static_cast<size_t>(height);
+	for (size_t i = 0; i < pixel_count; ++i) {
+		byte* px = pixels + i * 4;
+		const unsigned int alpha = px[3];
+		if (alpha < 255) {
+			px[0] = static_cast<byte>((px[0] * alpha) / 255);
+			px[1] = static_cast<byte>((px[1] * alpha) / 255);
+			px[2] = static_cast<byte>((px[2] * alpha) / 255);
+		}
+	}
+
+	GLint prev_texture = 0;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_texture);
+	GLint prev_alignment = 0;
+	glGetIntegerv(GL_UNPACK_ALIGNMENT, &prev_alignment);
+
+	GLuint tex = 0;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, prev_alignment);
+	glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(prev_texture));
+
+	Q_free(pixels);
+
+	texture_dimensions = Rml::Vector2i(width, height);
+	return static_cast<Rml::TextureHandle>(tex);
 }
 
 Rml::TextureHandle RenderInterfaceGL::GenerateTexture(

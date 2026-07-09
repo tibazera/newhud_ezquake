@@ -21,12 +21,19 @@
 /* Engine headers inside extern "C"; they assume q_shared.h types. */
 extern "C" {
 #include "quakedef.h"
+#include "console.h"
 
 /* Helpers defined in C translation units. */
 int HUD_Stats(int stat_num);
 char* SecondsToMinutesString(int print_time);
 int Cam_TrackNum(void);
 extern cvar_t host_mapname;
+
+/* Console notify timestamps (console.c) - not exported by console.h. */
+extern float con_times[16];
+
+/* Scoreboard toggles (sbar.c). */
+extern qbool sb_showscores, sb_showteamscores;
 }
 
 namespace {
@@ -97,7 +104,13 @@ struct HudModel {
 	bool spectator = false;
 	bool demo_playback = false;
 	int mvd = 0;               // 0 no, 1 MVD, 2 QTV
+	// events
+	Rml::String centerprint;   // current centerprint text ('\n' separated)
+	bool centerprint_visible = false;
+	Rml::Vector<Rml::String> notify_lines;
 	// scoreboard
+	bool showscores = false;
+	bool showteamscores = false;
 	Rml::Vector<PlayerRow> players;
 };
 
@@ -105,6 +118,10 @@ HudModel data;
 HudModel prev;
 Rml::DataModelHandle model_handle;
 bool model_ready = false;
+
+/* Centerprint state pushed by the engine hook (survives model recreation). */
+Rml::String cp_text;
+double cp_stamp = -1.0; // cl.time when received; < 0 = none
 
 const char* WeaponLabel(int weapon_num)
 {
@@ -234,6 +251,73 @@ void ReadEngineState(HudModel& m)
 	m.demo_playback = cls.demoplayback != 0;
 	m.mvd = cls.mvdplayback;
 
+	// -- events: centerprint (classic semantics: scr_centertime seconds,
+	// kept visible during intermission - hud_centerprint.c) --
+	{
+		static cvar_t* centertime = nullptr;
+		if (!centertime) {
+			centertime = Cvar_Find("scr_centertime");
+		}
+		const double duration = centertime ? centertime->value : 2.0;
+		m.centerprint = cp_text;
+		m.centerprint_visible = cp_stamp >= 0.0 && !cp_text.empty() &&
+			(cl.intermission || (cl.time - cp_stamp) < duration);
+	}
+
+	// -- events: console notify lines (mirrors SCR_DrawNotify's scan of
+	// con_times against con_notifytime / _con_notifylines) --
+	{
+		static cvar_t* notifytime = nullptr;
+		static cvar_t* notifylines = nullptr;
+		if (!notifytime) {
+			notifytime = Cvar_Find("con_notifytime");
+		}
+		if (!notifylines) {
+			notifylines = Cvar_Find("_con_notifylines");
+		}
+		const float timeout = notifytime ? notifytime->value : 3.0f;
+		int rows = notifylines ? notifylines->integer : 4;
+		if (rows < 0) rows = 0;
+		if (rows > 16) rows = 16;
+
+		m.notify_lines.clear();
+		if (con.text && con_totallines > 0 && con_linewidth > 0) {
+			for (int i = con.current - rows + 1; i <= con.current; ++i) {
+				if (i < 0) {
+					continue;
+				}
+				const float stamp = con_times[i % 16];
+				if (stamp == 0.0f || cls.realtime - stamp > timeout) {
+					continue;
+				}
+
+				const wchar* row = con.text + (i % con_totallines) * con_linewidth;
+				int len = con_linewidth;
+				while (len > 0 && (row[len - 1] & 0xFF) == ' ') {
+					--len;
+				}
+				Rml::String line;
+				line.reserve(len);
+				for (int c = 0; c < len; ++c) {
+					// Quake console glyphs: 128+ are the "brown" variants of
+					// the same character; map to readable ASCII.
+					int ch = row[c] & 0xFF;
+					if (ch >= 128 + 32) {
+						ch -= 128;
+					}
+					line += (ch >= 32 && ch < 127) ? static_cast<char>(ch) : ' ';
+				}
+				if (!line.empty()) {
+					m.notify_lines.push_back(line);
+				}
+			}
+		}
+	}
+
+	// -- scoreboard toggles (+showscores / +showteamscores) --
+	m.showscores = sb_showscores != 0;
+	m.showteamscores = sb_showteamscores != 0;
+
 	// -- scoreboard (connected, non-spectating players) --
 	m.players.clear();
 	for (int i = 0; i < MAX_CLIENTS; ++i) {
@@ -355,7 +439,14 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("spectator", &data.spectator);
 	constructor.Bind("demo_playback", &data.demo_playback);
 	constructor.Bind("mvd", &data.mvd);
+	// events
+	constructor.RegisterArray<Rml::Vector<Rml::String>>();
+	constructor.Bind("centerprint", &data.centerprint);
+	constructor.Bind("centerprint_visible", &data.centerprint_visible);
+	constructor.Bind("notify_lines", &data.notify_lines);
 	// scoreboard
+	constructor.Bind("showscores", &data.showscores);
+	constructor.Bind("showteamscores", &data.showteamscores);
 	constructor.Bind("players", &data.players);
 
 	model_handle = constructor.GetModelHandle();
@@ -424,6 +515,14 @@ void GameDataSync()
 	DirtyIfChanged("spectator", data.spectator, prev.spectator);
 	DirtyIfChanged("demo_playback", data.demo_playback, prev.demo_playback);
 	DirtyIfChanged("mvd", data.mvd, prev.mvd);
+	DirtyIfChanged("centerprint", data.centerprint, prev.centerprint);
+	DirtyIfChanged("centerprint_visible", data.centerprint_visible, prev.centerprint_visible);
+	DirtyIfChanged("showscores", data.showscores, prev.showscores);
+	DirtyIfChanged("showteamscores", data.showteamscores, prev.showteamscores);
+
+	if (data.notify_lines != prev.notify_lines) {
+		model_handle.DirtyVariable("notify_lines");
+	}
 
 	if (!PlayersEqual(data.players, prev.players)) {
 		model_handle.DirtyVariable("players");
@@ -436,6 +535,18 @@ void GameDataReset()
 {
 	model_handle = Rml::DataModelHandle();
 	model_ready = false;
+}
+
+void GameDataCenterPrint(const char* str)
+{
+	cp_text = str ? str : "";
+	cp_stamp = cl.time;
+}
+
+void GameDataCenterPrintClear()
+{
+	cp_text.clear();
+	cp_stamp = -1.0;
 }
 
 } // namespace rmlui

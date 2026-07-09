@@ -25,7 +25,7 @@ extern "C" {
 #include "game_data_model.h"
 
 cvar_t hud_newhudeditor = {"hud_newhudeditor", "0"};
-cvar_t hud_newhudeditor_doc = {"hud_newhudeditor_doc", "ui/rml/hud/minimal.rml"};
+cvar_t hud_newhudeditor_doc = {"hud_newhudeditor_doc", "ui/rml/hud/hud.rml"};
 
 namespace {
 
@@ -272,6 +272,16 @@ void HUD_RmlUi_SyncGameState(void)
 		return;
 	}
 	ezquake::rmlui::GameDataSync();
+}
+
+void HUD_RmlUi_CenterPrint(const char* str)
+{
+	ezquake::rmlui::GameDataCenterPrint(str);
+}
+
+void HUD_RmlUi_CenterPrintClear(void)
+{
+	ezquake::rmlui::GameDataCenterPrintClear();
 }
 
 int HUD_RmlUi_IsEnabled(void)

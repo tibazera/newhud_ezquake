@@ -1,174 +1,236 @@
 <rml>
 <head>
     <title>HUD</title>
-    <link type="text/rcss" href="../../rcss/base.rcss"/>
-    <link type="text/rcss" href="../../rcss/hud.rcss"/>
-    <link type="text/rcss" href="../../rcss/notify.rcss"/>
+    <style>
+        body {
+            font-family: LatoLatin;
+            color: #ffffff;
+            width: 100%;
+            height: 100%;
+        }
+        .box {
+            background-color: #00000098;
+            border-radius: 6px;
+        }
+
+        /* ---- bottom-center: armor / health / ammo trio ---- */
+        #trio {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            margin-left: -240px;
+            width: 480px;
+            text-align: center;
+        }
+        .cell {
+            display: inline-block;
+            width: 140px;
+            padding: 6px 0;
+            margin: 0 4px;
+            vertical-align: bottom;
+        }
+        .cell .big { font-size: 44dp; font-weight: bold; display: block; }
+        .cell .tag { font-size: 14dp; color: #b0b0b0; display: block; }
+        .low { color: #ff4040; }
+        .mega { color: #60c0ff; }
+        .ga { color: #40c040; }
+        .ya { color: #e0c040; }
+        .ra { color: #ff4040; }
+
+        /* ---- weapon bar above the trio ---- */
+        #weapons {
+            position: absolute;
+            bottom: 96px;
+            left: 50%;
+            margin-left: -240px;
+            width: 480px;
+            text-align: center;
+        }
+        .wslot {
+            display: inline-block;
+            width: 44px;
+            padding: 3px 0;
+            margin: 0 2px;
+            font-size: 16dp;
+            color: #707070;
+            background-color: #00000060;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .wslot.owned { color: #e0e0e0; background-color: #00000098; }
+        .wslot.active { color: #ffffff; background-color: #205080d0; font-weight: bold; }
+
+        /* ---- bottom-right: per-type ammo + frags ---- */
+        #inventory {
+            position: absolute;
+            right: 18px;
+            bottom: 18px;
+            padding: 8px 14px;
+            font-size: 16dp;
+            text-align: right;
+        }
+        #inventory .arow { display: block; color: #d0d0d0; }
+        #inventory .frags { display: block; font-size: 22dp; font-weight: bold; margin-top: 4px; }
+
+        /* ---- bottom-left: powerups / keys / speed ---- */
+        #status {
+            position: absolute;
+            left: 18px;
+            bottom: 18px;
+            padding: 8px 14px;
+            font-size: 18dp;
+        }
+        #status .prow { display: block; font-weight: bold; }
+        .quad { color: #60a0ff; }
+        .pent { color: #ff5050; }
+        .ring { color: #e0e060; }
+        .suit { color: #40c040; }
+        .keys { color: #d0b040; }
+        #status .speed { display: block; color: #b0b0b0; font-size: 15dp; }
+
+        /* ---- top-right: clock / fps / ping ---- */
+        #meta {
+            position: absolute;
+            right: 18px;
+            top: 14px;
+            padding: 6px 14px;
+            font-size: 16dp;
+            text-align: right;
+        }
+        #meta .clock { font-size: 24dp; font-weight: bold; display: block; }
+        #meta .net { color: #b0b0b0; display: block; }
+
+        /* ---- top-left: notify lines ---- */
+        #notify {
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            width: 45%;
+            font-size: 15dp;
+            color: #e8e8e8;
+        }
+        #notify .nline { display: block; }
+
+        /* ---- centerprint ---- */
+        #centerprint {
+            position: absolute;
+            top: 25%;
+            left: 15%;
+            width: 70%;
+            text-align: center;
+            font-size: 22dp;
+            font-weight: bold;
+            color: #ffe8a0;
+            white-space: pre-line;
+        }
+
+        /* ---- scoreboard (+showscores) ---- */
+        #scores {
+            position: absolute;
+            top: 18%;
+            left: 50%;
+            margin-left: -220px;
+            width: 440px;
+            padding: 10px 16px;
+            font-size: 17dp;
+        }
+        #scores .title { font-size: 20dp; font-weight: bold; display: block; margin-bottom: 6px; color: #b0d0ff; }
+        #scores .prow { display: block; }
+        #scores .fr { display: inline-block; width: 56px; font-weight: bold; }
+        #scores .pn { display: inline-block; width: 190px; }
+        #scores .tm { display: inline-block; width: 90px; color: #b0b0b0; }
+        #scores .pi { display: inline-block; width: 60px; color: #b0b0b0; text-align: right; }
+        .specrow { color: #808080; }
+    </style>
 </head>
-<body id="hud" data-model="game" class="hud-overlay hud-default">
 
-    <!-- ========== Bottom-Left: Health + Armor ========== -->
-    <div class="stat-backdrop hud-bottom-left">
-        <!-- Health -->
-        <div class="corner-stat health" data-class-low="health &lt; 25">
-            <span class="value">{{ health }}</span>
+<!--
+    Text-first HUD bound to the "hud" GameDataModel (M3).
+    Element parity vs the classic registry (docs/hud-element-registry.csv):
+    health/armor(+type colours)/ammo trio, gun2-8 bar, ammo1-4, frags,
+    gameclock, fps/ping, speed, quad/pent/ring/suit, key1/key2,
+    centerprint, notify, scoreboard (+showscores) with map name.
+-->
+<body data-model="hud">
+
+    <!-- notify (console) lines -->
+    <div id="notify">
+        <div class="nline" data-for="line : notify_lines">{{ line }}</div>
+    </div>
+
+    <!-- clock / net -->
+    <div id="meta" class="box">
+        <span class="clock">{{ match_time }}</span>
+        <span class="net">{{ fps }} fps &nbsp; {{ ping }} ms</span>
+        <span class="net" data-if="spectator">SPEC</span>
+        <span class="net" data-if="demo_playback">DEMO</span>
+    </div>
+
+    <!-- weapon bar: 8 slots, owned + active states -->
+    <div id="weapons">
+        <span class="wslot" data-class-owned="has_axe" data-class-active="weapon_num == 1">AXE</span>
+        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2">SG</span>
+        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3">SSG</span>
+        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4">NG</span>
+        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5">SNG</span>
+        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6">GL</span>
+        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7">RL</span>
+        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8">LG</span>
+    </div>
+
+    <!-- armor / health / ammo -->
+    <div id="trio">
+        <div class="cell box" data-if="armor > 0"
+             data-class-ga="armor_type == 1"
+             data-class-ya="armor_type == 2"
+             data-class-ra="armor_type == 3">
+            <span class="big">{{ armor }}</span>
+            <span class="tag">ARMOR</span>
         </div>
-
-        <!-- Divider + Armor (hidden when no armor) -->
-        <div class="stat-divider" data-if="armor > 0"></div>
-        <div class="corner-stat armor"
-             data-if="armor > 0"
-             data-class-armor-green="armor_type == 1"
-             data-class-armor-yellow="armor_type == 2"
-             data-class-armor-red="armor_type == 3">
-            <span class="value">{{ armor }}</span>
+        <div class="cell box">
+            <span class="big" data-class-low="health &lt; 25" data-class-mega="health &gt; 100">{{ health }}</span>
+            <span class="tag">HEALTH</span>
+        </div>
+        <div class="cell box">
+            <span class="big" data-class-low="ammo &lt; 10">{{ ammo }}</span>
+            <span class="tag">{{ weapon_label }}</span>
         </div>
     </div>
 
-    <!-- ========== Bottom-Center: Weapon Bar ========== -->
-    <div class="weapon-bar hud-bottom-center">
-        <div class="weapon-slot" data-class-owned="true" data-class-active="active_weapon == 4096">
-            <span class="weapon-num">1</span>
-            <span class="weapon-name">AXE</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_shotgun" data-class-active="active_weapon == 1">
-            <span class="weapon-num">2</span>
-            <span class="weapon-name">SG</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_super_shotgun" data-class-active="active_weapon == 2">
-            <span class="weapon-num">3</span>
-            <span class="weapon-name">SSG</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_nailgun" data-class-active="active_weapon == 4">
-            <span class="weapon-num">4</span>
-            <span class="weapon-name">NG</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_super_nailgun" data-class-active="active_weapon == 8">
-            <span class="weapon-num">5</span>
-            <span class="weapon-name">SNG</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_grenade_launcher" data-class-active="active_weapon == 16">
-            <span class="weapon-num">6</span>
-            <span class="weapon-name">GL</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_rocket_launcher" data-class-active="active_weapon == 32">
-            <span class="weapon-num">7</span>
-            <span class="weapon-name">RL</span>
-        </div>
-        <div class="weapon-slot" data-class-owned="has_lightning_gun" data-class-active="active_weapon == 64">
-            <span class="weapon-num">8</span>
-            <span class="weapon-name">LG</span>
-        </div>
+    <!-- per-type ammo + frags -->
+    <div id="inventory" class="box">
+        <span class="arow">shells {{ shells }}</span>
+        <span class="arow">nails {{ nails }}</span>
+        <span class="arow">rockets {{ rockets }}</span>
+        <span class="arow">cells {{ cells }}</span>
+        <span class="frags">frags {{ frags }}</span>
     </div>
 
-    <!-- ========== Bottom-Right: Ammo ========== -->
-    <div class="stat-backdrop hud-bottom-right" data-if="!is_axe">
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-            <!-- Weapon label -->
-            <span class="weapon-label">{{ weapon_label }}</span>
-
-            <!-- Main ammo count (always visible) -->
-            <div class="corner-stat ammo" data-class-low="ammo &lt; 10">
-                <span class="value">{{ ammo }}</span>
-            </div>
-
-            <!-- Ammo reserves strip (context-sensitive: fades in on weapon switch) -->
-            <div class="ammo-reserves">
-                <div class="reserve" data-class-active="is_shells_weapon">
-                    <span class="reserve-label">S</span>
-                    <span class="reserve-value">{{ shells }}</span>
-                </div>
-                <div class="reserve" data-class-active="is_nails_weapon">
-                    <span class="reserve-label">N</span>
-                    <span class="reserve-value">{{ nails }}</span>
-                </div>
-                <div class="reserve" data-class-active="is_rockets_weapon">
-                    <span class="reserve-label">R</span>
-                    <span class="reserve-value">{{ rockets }}</span>
-                </div>
-                <div class="reserve" data-class-active="is_cells_weapon">
-                    <span class="reserve-label">C</span>
-                    <span class="reserve-value">{{ cells }}</span>
-                </div>
-            </div>
-        </div>
+    <!-- powerups / keys / speed -->
+    <div id="status" class="box">
+        <span class="prow quad" data-if="quad">QUAD</span>
+        <span class="prow pent" data-if="pent">PENT</span>
+        <span class="prow ring" data-if="ring">RING</span>
+        <span class="prow suit" data-if="suit">SUIT</span>
+        <span class="prow keys" data-if="key1 || key2">
+            <span data-if="key1">SILVER </span>
+            <span data-if="key2">GOLD</span>
+        </span>
+        <span class="speed">{{ speed }} ups</span>
     </div>
 
-    <!-- ========== Top-Right: Key Indicators ========== -->
-    <div class="key-indicators hud-top-right">
-        <div class="key-indicator silver" data-if="has_key1">
-            <span class="key-icon">KEY</span>
-            <div class="key-accent"></div>
-        </div>
-        <div class="key-indicator gold" data-if="has_key2">
-            <span class="key-icon">KEY</span>
-            <div class="key-accent"></div>
-        </div>
-    </div>
+    <!-- centerprint -->
+    <div id="centerprint" data-if="centerprint_visible">{{ centerprint }}</div>
 
-    <!-- ========== Top-Left: Powerups + Level Stats ========== -->
-    <div class="top-left-stack hud-top-left">
-        <div class="powerup-badges">
-            <div class="powerup-badge quad" data-if="has_quad">
-                <span class="powerup-name">Quad Damage</span>
-            </div>
-            <div class="powerup-badge pent" data-if="has_invulnerability">
-                <span class="powerup-name">Pentagram</span>
-            </div>
-            <div class="powerup-badge ring" data-if="has_invisibility">
-                <span class="powerup-name">Ring of Shadows</span>
-            </div>
-            <div class="powerup-badge suit" data-if="has_suit">
-                <span class="powerup-name">Biosuit</span>
-            </div>
+    <!-- scoreboard -->
+    <div id="scores" class="box" data-if="showscores">
+        <span class="title">{{ map }} &nbsp; {{ match_time }}</span>
+        <div class="prow" data-for="p : players" data-class-specrow="p.spectator">
+            <span class="fr">{{ p.frags }}</span>
+            <span class="pn">{{ p.name }}</span>
+            <span class="tm">{{ p.team }}</span>
+            <span class="pi">{{ p.ping }}</span>
         </div>
-
-        <div class="level-stats" data-if="!deathmatch">
-            <div class="level-stat">
-                <span class="level-stat-label">KILLS</span>
-                <span class="level-stat-value">{{ monsters }}/{{ total_monsters }}</span>
-            </div>
-            <div class="level-stat">
-                <span class="level-stat-label">SECRETS</span>
-                <span class="level-stat-value">{{ secrets }}/{{ total_secrets }}</span>
-            </div>
-        </div>
-
-        <div class="notify-area">
-            <div class="notify-line" data-if="notify_0_visible" data-class-fading="notify_0_fading">{{ notify_0 }}</div>
-            <div class="notify-line" data-if="notify_1_visible" data-class-fading="notify_1_fading">{{ notify_1 }}</div>
-            <div class="notify-line" data-if="notify_2_visible" data-class-fading="notify_2_fading">{{ notify_2 }}</div>
-            <div class="notify-line" data-if="notify_3_visible" data-class-fading="notify_3_fading">{{ notify_3 }}</div>
-        </div>
-    </div>
-
-    <!-- ========== Crosshair (center screen) ========== -->
-    <div id="crosshair-container" class="crosshair" data-if="reticle_style > 0"
-         data-class-firing="weapon_firing"
-         data-class-equipping="weapon_show">
-        <!-- Cross (style 1) -->
-        <reticle data-if="reticle_style == 1">
-            <reticle-line angle="0" />
-            <reticle-line angle="90" />
-            <reticle-line angle="180" />
-            <reticle-line angle="270" />
-            <reticle-dot />
-        </reticle>
-        <!-- Dot (style 2) -->
-        <reticle data-if="reticle_style == 2">
-            <reticle-dot />
-        </reticle>
-        <!-- Circle (style 3) -->
-        <reticle data-if="reticle_style == 3">
-            <reticle-ring />
-            <reticle-dot />
-        </reticle>
-        <!-- Chevron (style 4) -->
-        <reticle data-if="reticle_style == 4">
-            <reticle-arc class="upper" />
-            <reticle-arc class="lower" />
-            <reticle-dot />
-        </reticle>
     </div>
 
 </body>
