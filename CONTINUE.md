@@ -116,6 +116,33 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
+### 2026-07-09 - M1 foundation hardening (code complete, PENDING user acceptance)
+
+Commits `df353bbe` (code) + submodule gitlinks commit. All five M1 items:
+1. vid_restart survival: HUD_RmlUi_VidShutdown() hooked in VID_Shutdown()
+   before R_Shutdown - releases RmlUi compiled geometry/textures and the
+   render interface's GL objects (new OnContextLost()) while the old context
+   is current; GL entry points reload lazily against the new context;
+   contexts/documents survive the restart.
+2. Full-quit shutdown wired through the same hook (restart==false ->
+   HUD_RmlUi_Shutdown(), reordered: Rml::Shutdown first while GL is alive).
+3. FileInterfaceVFS (src/rmlui/file_interface_vfs.*): RML/RCSS/fonts load
+   through the quake VFS (game dirs + paks, FS_ANY) with stdio fallback for
+   loose cwd files. Gotchas: include RmlUi/STL BEFORE engine headers
+   (q_shared macros poison <algorithm>); do not name anything OpenFile
+   (winbase.h clash).
+4. Classic HUD gated: both Sbar_Draw call sites + SCR_DrawNewHudElements
+   skip when the RmlUI HUD is active; crosshair/pause/net/teaminfo/
+   centerprint/intermission intentionally keep drawing.
+5. Submodule gitlinks restored (src/qwprot @ master, vcpkg @ 2026.06.24).
+
+M1 acceptance test (user, on screen): with hud_newhudeditor 1 -
+(a) classic bottom status bar must be GONE (only the RmlUI panel);
+(b) vid_restart in the console -> no crash, HUD comes back;
+(c) toggle fullscreen/resolution -> no crash, HUD correct;
+(d) quit cleanly. ui/ can now also live inside the gamedir (e.g. id1/ui/)
+or a pak, not only next to the exe.
+
 ### 2026-07-09 - VISUAL VERIFICATION PASSED
 
 Ran on the user's Quake install (E:\trabalho\quake, exe + ui\ copied there,
