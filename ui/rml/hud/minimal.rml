@@ -16,23 +16,38 @@
             background-color: #000000c0;
             border-radius: 6px;
         }
-        .row { display: block; font-size: 22dp; }
-        .stat { font-size: 40dp; font-weight: bold; }
+        .row { display: block; font-size: 20dp; }
+        .stat { font-size: 36dp; font-weight: bold; }
         .low { color: #ff4040; }
-        .muted { color: #b0b0b0; font-size: 16dp; }
+        .muted { color: #b0b0b0; font-size: 15dp; }
+        .ga { color: #40c040; }
+        .ya { color: #e0c040; }
+        .ra { color: #ff4040; }
+        .powerup { color: #60a0ff; font-weight: bold; }
     </style>
 </head>
 
 <!--
-    Minimal proof-of-life HUD wired to the "hud" GameDataModel
-    (Story: ezQuake OpenGL RmlUI HUD port). Shows live synced values.
+    Minimal proof-of-life HUD wired to the "hud" GameDataModel.
+    M2: shows the expanded field set (weapon, per-type ammo, speed, fps,
+    match clock, armor type colours, powerups) for on-screen acceptance.
 -->
 <body data-model="hud">
     <div id="panel">
-        <div class="row muted">map {{ map }} &nbsp; t {{ time }}</div>
+        <div class="row muted">{{ map }} &nbsp; {{ match_time }} &nbsp; fps {{ fps }}</div>
         <div class="row stat" data-class-low="health &lt; 25">HP {{ health }}</div>
-        <div class="row stat" data-if="armor > 0">AR {{ armor }}</div>
-        <div class="row stat">AM {{ ammo }}</div>
+        <div class="row stat" data-if="armor > 0"
+             data-class-ga="armor_type == 1"
+             data-class-ya="armor_type == 2"
+             data-class-ra="armor_type == 3">AR {{ armor }}</div>
+        <div class="row stat">{{ weapon_label }} {{ ammo }}</div>
+        <div class="row muted">s:{{ shells }} n:{{ nails }} r:{{ rockets }} c:{{ cells }}</div>
+        <div class="row muted">spd {{ speed }} &nbsp; frags {{ frags }}</div>
+        <div class="row powerup" data-if="quad || pent || ring">
+            <span data-if="quad">QUAD </span>
+            <span data-if="pent">PENT </span>
+            <span data-if="ring">RING</span>
+        </div>
     </div>
 </body>
 </rml>

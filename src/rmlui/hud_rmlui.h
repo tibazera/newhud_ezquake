@@ -40,15 +40,12 @@ void HUD_RmlUi_Frame(double dt);
 void HUD_RmlUi_Render(void);
 void HUD_RmlUi_Resize(int width, int height);
 
-void HUD_RmlUi_SyncGameState(
-	const int* stats,
-	int stats_count,
-	int items,
-	int intermission,
-	int gametype,
-	int maxclients,
-	const char* map_name,
-	double game_time);
+/*
+ * Publishes the current game state to the "hud" data model. The model
+ * reads the engine globals (cl/cls/cvars) directly; call once per frame
+ * from the 2D path, before HUD_RmlUi_Frame().
+ */
+void HUD_RmlUi_SyncGameState(void);
 
 int HUD_RmlUi_IsEnabled(void);
 int HUD_RmlUi_ShouldDrawClassicHud(void);

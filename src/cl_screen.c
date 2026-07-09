@@ -1002,7 +1002,7 @@ void SCR_UpdateScreenHudOnly(void)
 		R_TraceEnterNamedRegion("HUD");
 #ifdef USE_RMLUI
 		HUD_RmlUi_Resize(vid.width, vid.height);
-		HUD_RmlUi_SyncGameState(cl.stats, MAX_CL_STATS, cl.stats[STAT_ITEMS], cl.intermission, cl.gametype, MAX_CLIENTS, cl.levelname, cl.time);
+		HUD_RmlUi_SyncGameState();
 #endif
 		if (scr_newHud.value != 1
 #ifdef USE_RMLUI
