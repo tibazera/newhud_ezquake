@@ -1,6 +1,6 @@
 # Continue: ezQuake RmlUI HUD Port
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Current Objective
 
@@ -16,30 +16,39 @@ hud_newhudeditor 1
 This name is important. Use it everywhere when referring to the new system so
 there is no ambiguity with the old `hud_editor` and classic HUD cvars.
 
-The repository at:
+## Status Summary (2026-07-09)
 
-```text
-C:\Users\Negociador\Documents\newhud_ezquake
-```
+The scaffold is no longer inert: the CONTINUE.md roadmap **steps 1-7 are done at
+the code level** and the client **builds and links** with the RmlUI HUD embedded.
+What remains is **runtime visual verification** (requires launching the client
+with Quake game data) plus richer features. See "Progress Log" and "Suggested
+Next Steps" below.
 
-has intentionally been converted from the old vkQuake/RmlUI fork into an
-ezQuake-based port repository.
+- `USE_RMLUI=ON` builds `ezquake.exe` with RmlUi 6.2 statically linked.
+- The RmlUI context initialises, exposes a "hud" data model, loads a font + a
+  minimal data-bound document, and renders through a real OpenGL render
+  interface.
+- Not yet confirmed on screen (no game data / display available in the dev
+  environment used for the port).
 
 ## Important Local Paths
 
+NOTE: the original CONTINUE.md was written for a different machine
+(`C:\Users\Negociador\Documents\...`) and referenced neighbour clones
+(`ezquake-source`, `qw-webhud`, an rmlui backup) that are NOT present in this
+checkout. Current reality:
+
 ```text
-C:\Users\Negociador\Documents\newhud_ezquake
-  main repo, now ezQuake source + RmlUI port scaffold
+C:\Users\Felipe\OneDrive\Desktop\qw_tiba
+  main repo (this checkout): ezQuake source + working RmlUI OpenGL HUD.
 
-C:\Users\Negociador\Documents\ezquake-source
-  clean ezQuake clone used as source base
-
-C:\Users\Negociador\Documents\newhud_ezquake_rmlui_backup
-  backup of old vkQuake/RmlUI UI assets, docs, and src bridge
-
-C:\Users\Negociador\Documents\qw-webhud
-  clone of Xerialen/qw-webhud for protocol/layout/editor reference
+C:\Users\Felipe\OneDrive\Desktop\qw_tiba\aiox-core
+  UNRELATED project accidentally cloned inside the working copy. Git-ignored
+  (/aiox-core/ in .gitignore). Do not commit it.
 ```
+
+The `qw-webhud` reference clone is not present here; use its public repo
+(Xerialen/qw-webhud) if needed as a GameDataModel checklist.
 
 ## GitHub / Repository State
 
@@ -49,80 +58,143 @@ Remote:
 origin https://github.com/tibazera/newhud_ezquake.git
 ```
 
-Branch:
+Branches:
 
 ```text
-master
+master                      base (scaffold commit 66444c70)
+feat/rmlui-opengl-build      ACTIVE - all port work below lives here, unpushed
 ```
 
-This repo was originally the vkQuake/RmlUI fork. It has now intentionally been
-rebased in-place as an ezQuake source tree plus an OpenGL-only RmlUI HUD port
-scaffold. Expect a very large diff that deletes vkQuake files and adds ezQuake
-files. That is deliberate.
+Submodules: the vkQuake->ezQuake conversion lost the submodule gitlinks. They
+were reconstructed as plain clones for the build and are currently UNTRACKED
+(not committed): `src/qwprot` (QW-Group/qwprot) and `vcpkg`
+(microsoft/vcpkg @ tag 2026.06.24). Restoring proper submodule references is a
+separate follow-up.
 
-## What Has Been Done
+## Build Instructions (Windows / MSVC) - WORKING
 
-- Replaced the project tree with current ezQuake source while keeping this
-  repo's `.git`.
-- Restored reusable RML/RCSS/font assets:
-  - `ui/`
-  - `ui_lab/`
-- Added port planning docs:
-  - `PORTING_EZQUAKE.md`
-  - `EZQUAKE_HUD_EDITOR_RMLUI_BRIDGE.md`
-- Added HUD registry extraction helper:
-  - `tools/extract_ezquake_hud_registers.ps1`
-- Added initial OpenGL-only RmlUI scaffold:
-  - `src/rmlui/hud_rmlui.h`
-  - `src/rmlui/hud_rmlui.cpp`
-  - `src/rmlui/render_interface_gl.h`
-  - `src/rmlui/render_interface_gl.cpp`
-- Added CMake option:
-  - `USE_RMLUI`, default `OFF`
-- Added `hud_newhudeditor` cvar in the scaffold:
-  - `0`: old HUD/editor path
-  - `1`: new RmlUI HUD/editor path; classic HUD draw is skipped
-- Hooked the scaffold into:
-  - `src/hud.c`
-  - `src/cl_screen.c`
+Toolchain used (installed via winget on a previously bare machine): CMake,
+Ninja, VS Build Tools 2022 (MSVC 14.44).
+
+The `msbuild-x64` preset does NOT work (it pins generator "Visual Studio 18
+2026"). Use `msvc-x64` (Ninja Multi-Config) from a shell with MSVC env loaded:
+
+```bat
+:: from a Developer prompt, or after calling vcvars64.bat:
+call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+set "PATH=C:\Program Files\CMake\bin;%PATH%"
+
+cmake --preset msvc-x64 -DUSE_RMLUI=ON
+cmake --build build-msvc-x64 --config Release
+:: -> build-msvc-x64/Release/ezquake.exe
+```
+
+First configure builds all vcpkg dependencies (SDL2, curl, freetype, rmlui,
+etc.) - ~13 min once, then binary-cached. If submodules are missing, recreate
+them first:
+
+```bat
+git clone https://github.com/QW-Group/qwprot.git src/qwprot
+git clone --branch 2026.06.24 --depth 1 https://github.com/microsoft/vcpkg.git vcpkg
+vcpkg\bootstrap-vcpkg.bat -disableMetrics
+```
+
+## How To Test On Screen (for the user)
+
+1. Copy the repo `ui/` tree into your Quake game directory (next to where
+   `ezquake.exe` runs). Fonts/RML are loaded via RmlUi's default file interface,
+   resolved relative to the working directory.
+2. Run `build-msvc-x64/Release/ezquake.exe`.
+3. In the console: `hud_newhudeditor 1` -> a panel should appear (bottom-left)
+   showing live HP / AR / AM / map from the game state.
+4. Iterate on the layout: edit `ui/rml/hud/minimal.rml`, then run
+   `hud_newhudeditor_reload` to reload without restarting.
+5. Diagnostics are printed to the console (`RmlUI HUD: ...`, `RmlUI GL: ...`).
+
+## Progress Log
+
+### 2026-07-08/09 - build bootstrap + roadmap steps 1-7 (branch feat/rmlui-opengl-build)
+
+Steps 1-3 - make it build (commit `367ffc50`):
+- Installed the whole toolchain (CMake/Ninja/MSVC) on a bare machine.
+- Reconstructed the lost `src/qwprot` and `vcpkg` submodules.
+- Fixed the C/C++ boundary so the engine headers compile as C++ for the first
+  time (the rmlui `.cpp` files are the first C++ TUs in the tree):
+  - `src/q_shared.h`: `typedef enum {false,true} qbool` is illegal in C++;
+    guard with `__cplusplus` -> `typedef int qbool` (int, to preserve the enum
+    ABI in structs shared across the boundary).
+  - `src/cl_screen.c`: RmlUI frame hook used non-existent `host_frametime` ->
+    `cls.frametime`.
+  - `CMakeLists.txt`: newer vcpkg minizip port exports the include root while
+    `fs.h` includes `"unzip.h"` -> resolve the minizip include dir in vcpkg
+    mode too; add `src/` to the include path for the rmlui TU.
+
+Step 4 - RmlUI dependency (commit `45e7ca50`):
+- `vcpkg.json`: added `rmlui` (6.2; Lua disabled, freetype pulled in).
+- `CMakeLists.txt`: `find_package(RmlUi CONFIG)` + link `RmlUi::RmlUi` behind
+  `USE_RMLUI`.
+- `render_interface_gl.*`: derives from `Rml::RenderInterface` with safe stubs.
+- `hud_rmlui.cpp`: real RmlUi lifecycle (SystemInterface via `Sys_DoubleTime` +
+  `Com_Printf` logging, `Rml::Initialise`, lazy "hud" context, Update/Render).
+
+Step 5 - real OpenGL render interface (commit `ddb86a97`):
+- `render_interface_gl.cpp`: self-contained modern-GL renderer. Loads GL 2.0+/
+  VAO entry points via `SDL_GL_GetProcAddress` (the engine's GL pointers are
+  static-per-file and not reusable); own shader, per-geometry VAO/VBO/IBO,
+  textures via `glTexImage2D`, premultiplied-alpha blend
+  `(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)`, scissor with Y-flip, and full GL state
+  save/restore around each frame (`BeginFrame`/`EndFrame`).
+- `LoadTexture` (external image files) is still a documented stub; fonts and
+  solid colours arrive through `GenerateTexture`.
+
+Step 6 - GameDataModel (commit `9b041a61`):
+- `hud_rmlui.cpp`: binds game state to the "hud" data model - `health`, `armor`,
+  `ammo`, `weapon`, `items`, `intermission`, `gametype`, `maxclients`, `time`,
+  `map`. Marked dirty each frame before `Context::Update()`.
+
+Step 7 - fonts + document (commit `c093afa4`):
+- Loads LatoLatin font faces at init.
+- `ui/rml/hud/minimal.rml`: self-contained proof-of-life document bound to
+  `data-model="hud"`, showing live HP/AR/AM/map with a low-health style.
+- `hud_newhudeditor_doc` cvar (document path) + `hud_newhudeditor_reload`
+  command for live iteration.
 
 ## Current Code State
 
-The scaffold is not a real RmlUI integration yet. It stores basic game state and
-creates the engine hook points. `HUD_RmlUi_Render()` is still intentionally empty.
-
-Next implementation step is to add the real RmlUI dependency and implement
-`RenderInterface_GL`.
-
-Current important files:
+Real integration. Key files:
 
 ```text
 CMakeLists.txt
-  Adds USE_RMLUI option and compiles src/rmlui/*.cpp when enabled.
+  USE_RMLUI: find_package(RmlUi), links RmlUi::RmlUi, adds src/ include for the
+  rmlui TU, and fixes the vcpkg minizip include dir.
+
+vcpkg.json
+  Declares the rmlui dependency.
 
 src/hud.c
-  Registers hud_newhudeditor and skips classic HUD draw when the new path is on.
+  Registers hud_newhudeditor, calls HUD_RmlUi_Init(), skips classic HUD draw
+  when the new path is on. (unchanged this session)
 
 src/cl_screen.c
-  Calls HUD_RmlUi_Resize, HUD_RmlUi_SyncGameState, HUD_RmlUi_Frame,
-  and HUD_RmlUi_Render from the 2D/HUD frame path.
+  Calls HUD_RmlUi_Resize / SyncGameState / Frame / Render from the 2D/HUD frame
+  path. (frametime fix)
 
-src/rmlui/hud_rmlui.h
-src/rmlui/hud_rmlui.cpp
-  C/C++ bridge stub and hud_newhudeditor cvar.
+src/rmlui/hud_rmlui.{h,cpp}
+  C/C++ bridge: RmlUi lifecycle, SystemInterface, "hud" GameDataModel, font +
+  document loading, hud_newhudeditor / hud_newhudeditor_doc cvars and the
+  hud_newhudeditor_reload command.
 
-src/rmlui/render_interface_gl.h
-src/rmlui/render_interface_gl.cpp
-  Placeholder for the real Rml::RenderInterface implementation.
+src/rmlui/render_interface_gl.{h,cpp}
+  Real Rml::RenderInterface implementation over raw modern OpenGL.
 
-ui/
-ui_lab/
-  RML/RCSS/font assets copied from the previous vkQuake/RmlUI work.
+ui/rml/hud/minimal.rml
+  Minimal HUD document wired to the current data model. (The legacy hud.rml uses
+  data-model="game" with many not-yet-synced fields and does not match the
+  current model - future work.)
+
+ui/, ui_lab/
+  RML/RCSS/font assets from the previous vkQuake/RmlUI work.
 ```
-
-Build validation note: `cmake` is not available in the current Windows PATH, and
-the bundled Codex runtime does not include CMake/Ninja. A configure/build check
-has not been run yet.
 
 ## Hard Requirement
 
@@ -145,149 +217,79 @@ src/r_program.h
 src/r_renderer_structure.h
 ```
 
-## qw-webhud Findings
-
-Xerialen/qw-webhud is useful, but as a design/reference project:
-
-- It uses one full JSON snapshot per rendered frame.
-- It keeps raw QuakeWorld values and derives HUD semantics in one shared layer.
-- Its `PROTOCOL.md` is a good checklist for our `GameDataModel`.
-- Its `elements.js` is a useful first element catalog.
-- Its editor/spec model is useful for the future replacement of `hud_editor`.
-
-Do not turn our target into an external browser overlay. Our target is embedded
-RmlUI rendered inside ezQuake through OpenGL.
-
-See:
-
-```text
-docs/qw-webhud-notes.md
-```
-
-Local clone:
-
-```text
-C:\Users\Negociador\Documents\qw-webhud
-```
-
-Most useful references there:
-
-```text
-PROTOCOL.md
-src/public/js/qw-constants.js
-src/public/js/elements.js
-src/public/js/editor.js
-src/public/specs/
-```
-
-Use the protocol as a GameDataModel checklist, not as a transport requirement.
+Engine APIs useful for deeper integration (from the renderer survey):
+- Textures from RGBA memory: `R_LoadTexture(id,w,h,data,mode,bpp)` /
+  `R_LoadTexturePixels(...)`, `R_DeleteTexture(&ref)`, `renderer.TextureUnitBind`.
+  (`texture_ref` = `{ unsigned int index; }`, `R_TextureReferenceIsValid`.)
+- Scissor with correct Y-flip/console scale: `Draw_EnableScissorRectangle`,
+  `Draw_DisableScissor`.
+- 2D state: `R_Set2D()`, `R_OrthographicProjection(...)`, `R_Cache2DMatrix()`.
+- The engine's modern-GL function pointers are `static` per-file and NOT
+  reusable from a new TU; new GL code must load its own pointers via
+  `SDL_GL_GetProcAddress` (this is what render_interface_gl.cpp does).
 
 ## Target Architecture
-
-The intended architecture is:
 
 ```text
 ezQuake client state
   -> HUD_RmlUi_SyncGameState()
-  -> C++ GameDataModel
+  -> C++ GameDataModel ("hud")
   -> RmlUI documents in ui/rml/hud/
-  -> OpenGL RenderInterface_GL
+  -> OpenGL RenderInterfaceGL
   -> ezQuake frame
 ```
 
-The old `hud_editor` should eventually be replaced by an RmlUI editor UI, but
-first the runtime HUD must work.
+Implemented end to end (pending on-screen confirmation). The old `hud_editor`
+should eventually be replaced by an RmlUI editor UI, but first the runtime HUD
+must be verified working.
+
+## qw-webhud Findings
+
+Xerialen/qw-webhud is useful as a design/reference project (not a transport):
+its `PROTOCOL.md` is a good GameDataModel checklist and its `elements.js` a
+first element catalog. Do not turn the target into an external browser overlay.
+See `docs/qw-webhud-notes.md`.
 
 ## Compatibility Strategy
 
 Use the old HUD system as a compatibility map:
-
 - `HUD_Register(...)` calls define canonical element names and defaults.
-- `hud_*_show`, `hud_*_place`, `hud_*_align_*`, `hud_*_x`, `hud_*_y` can later
-  be imported into an RmlUI layout/spec.
+- `hud_*_show/_place/_align_*/_x/_y` can later be imported into an RmlUI spec.
 - The new runtime should not mutate hundreds of classic HUD cvars as its primary
   storage model.
 
-Helper:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\extract_ezquake_hud_registers.ps1 -Csv
-```
-
-That script extracts the old HUD element registry from an ezQuake source tree.
+Helper: `powershell -ExecutionPolicy Bypass -File .\tools\extract_ezquake_hud_registers.ps1 -Csv`
 
 ## Suggested Next Steps
 
-1. Install/provide CMake/Ninja or use a machine/toolchain where they exist.
+1. VISUAL VERIFICATION (user): run the client with game data, `hud_newhudeditor 1`,
+   confirm the minimal HUD draws. Report console output if not. Known risk areas:
+   shader is `#version 330 core` (needs a modern GL context), scissor coordinate
+   mapping, and the file interface being cwd-relative.
 
-2. Run a configure/build check with:
+2. FileInterface over ezQuake's VFS (`FS_OpenVFS` / `VFS_READ` / ...), so fonts
+   and RML load from the game filesystem/paks instead of cwd-relative paths.
 
-```powershell
-cmake -S . -B build-rmlui -DUSE_RMLUI=ON -DRENDERER_MODERN_OPENGL=ON
-cmake --build build-rmlui --config Debug
-```
+3. Expand the GameDataModel to the full field set the legacy `ui/rml/hud/hud.rml`
+   expects (armor_type, per-type ammo shells/nails/rockets/cells, weapon
+   ownership flags, notify lines, level stats, speed, clock). Use qw-webhud
+   PROTOCOL.md as the checklist. Then switch the default document to hud.rml.
 
-3. Fix compile errors from the C/C++ boundary.
+4. Wire `RenderInterfaceGL::LoadTexture` for external image files (via the VFS
+   file interface), for RML `<img>`/`decorator: image(...)`.
 
-4. Add RmlUI as a dependency:
-   - likely `lib/rmlui` submodule or CMake FetchContent;
-   - require Freetype;
-   - keep Lua disabled.
-
-5. Replace `RenderInterfaceGL` placeholder with a real `Rml::RenderInterface`.
-
-6. Implement `GameDataModel` using the qw-webhud snapshot fields as the first
-   binding checklist.
-
-7. Load `ui/rml/hud/hud.rml` and show a minimal HUD:
-   - health
-   - armor
-   - ammo
-   - weapon
-   - items/powerups
-   - speed
-   - clock/map
-
-8. Only after the embedded HUD works, design the RmlUI replacement for the
-   visual editor.
-
-## Suggested First Real Commit After This Scaffold
-
-The next development commit should probably be:
-
-```text
-Add embedded RmlUI dependency and OpenGL render interface
-```
-
-Expected contents:
-
-- RmlUI library added to CMake.
-- `RenderInterfaceGL` derives from `Rml::RenderInterface`.
-- texture load/release works through ezQuake OpenGL texture helpers.
-- compiled geometry renders simple colored/textured triangles.
-- scissor works.
-- `HUD_RmlUi_Render()` renders an empty or trivial RML document without crashing.
-
-## Useful Commands
-
-Extract old ezQuake HUD elements:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\extract_ezquake_hud_registers.ps1 -Csv
-```
-
-Inspect current changed files:
-
-```powershell
-git status --short
-```
+5. Input routing / editor: only after the runtime HUD is solid, design the RmlUI
+   replacement for the visual `hud_editor`.
 
 ## Warnings
 
 - The working tree intentionally has massive changes because the base was
-  replaced from vkQuake to ezQuake.
-- Do not revert this replacement unless the user explicitly asks.
+  replaced from vkQuake to ezQuake. Do not revert this replacement.
 - Do not use Vulkan as a shortcut.
-- Keep `USE_RMLUI` optional until the first real RmlUI HUD works.
-- The current branch may already contain one scaffold commit. Check `git log -1`
-  before continuing.
+- `/aiox-core/` inside the working copy is an unrelated project - git-ignored,
+  never commit it.
+- Port work is on `feat/rmlui-opengl-build`, unpushed. `master` still points at
+  the scaffold commit. Check `git log --oneline -8` before continuing.
+- `src/qwprot` and `vcpkg` are untracked reconstructed submodules - do not
+  `git add` them as plain directories; restore proper submodule links instead.
+```
