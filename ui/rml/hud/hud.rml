@@ -146,6 +146,62 @@
         #scores .plc { display: inline-block; width: 45px; color: #806060; text-align: right; vertical-align: middle; }
         .specrow { color: #707070; font-size: 15dp; }
 
+        /* ---- style picker (hud_newhudeditor_style) ---- */
+        #stylepicker {
+            position: absolute;
+            top: 12%;
+            left: 50%;
+            margin-left: -330px;
+            width: 660px;
+            padding: 16px 20px;
+            background-color: #101418e8;
+            border-radius: 10px;
+        }
+        #stylepicker .ptitle {
+            display: block; text-align: center;
+            font-size: 24dp; font-weight: bold; color: #ffffff;
+            margin-bottom: 2px;
+        }
+        #stylepicker .psub {
+            display: block; text-align: center;
+            font-size: 14dp; color: #8090a0; margin-bottom: 14px;
+        }
+        #stylepicker .card {
+            display: inline-block;
+            width: 190px;
+            margin: 6px;
+            padding: 10px 8px;
+            background-color: #1c2430;
+            border: 2dp #2a3644;
+            border-radius: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+        #stylepicker .card:hover { border: 2dp #5090d0; background-color: #223044; }
+        #stylepicker .card.current { border: 2dp #60c060; }
+        #stylepicker .card .cname {
+            display: block; font-size: 16dp; font-weight: bold;
+            color: #e8e8e8; margin-bottom: 8px;
+        }
+        #stylepicker .card img.sample-num { width: 26px; height: 32px; }
+        #stylepicker .card img.sample-icon { width: 32px; height: 32px; margin-left: 8px; }
+        #stylepicker .card .srow { display: block; margin: 3px 0; }
+        #stylepicker .card .cur {
+            display: block; font-size: 12dp; color: #60c060; margin-top: 6px;
+        }
+        #styleclose {
+            display: block;
+            margin: 14px auto 0 auto;
+            width: 120px;
+            padding: 7px 0;
+            text-align: center;
+            font-size: 15dp; font-weight: bold;
+            color: #ffffff;
+            background-color: #304050;
+            border-radius: 6px;
+        }
+        #styleclose:hover { background-color: #4a6078; }
+
         /* ---- edit mode (hud_newhudeditor_edit) ---- */
         #edithint { display: none; }
         body.edit #edithint {
@@ -251,6 +307,29 @@
     <div id="speed">{{ speed }} ups</div>
 
     <div id="centerprint" data-if="centerprint_visible">{{ centerprint }}</div>
+
+    <!-- visual iconset picker: hover = live full-HUD preview, click = apply -->
+    <div id="stylepicker" data-if="stylepicker">
+        <span class="ptitle">Estilo do HUD</span>
+        <span class="psub">passe o mouse para experimentar ao vivo · clique para aplicar</span>
+        <div class="card" data-for="s : iconsets"
+             data-attr-setpath="s.path"
+             data-class-current="s.path == iconpath">
+            <span class="cname">{{ s.name }}</span>
+            <span class="srow">
+                <img class="sample-num" data-attr-src="s.path + 'num_1'"/>
+                <img class="sample-num" data-attr-src="s.path + 'num_0'"/>
+                <img class="sample-num" data-attr-src="s.path + 'num_0'"/>
+            </span>
+            <span class="srow">
+                <img class="sample-icon" data-attr-src="s.path + 'sb_shells'"/>
+                <img class="sample-icon" data-attr-src="s.path + 'sb_armor1'"/>
+                <img class="sample-icon" data-attr-src="s.path + 'sb_quad'"/>
+            </span>
+            <span class="cur" data-if="s.path == iconpath">✓ em uso</span>
+        </div>
+        <div id="styleclose">Fechar</div>
+    </div>
 
     <!-- scoreboard: sorted by frags, quake team colours, spectators last -->
     <div id="scores" data-if="showscores">

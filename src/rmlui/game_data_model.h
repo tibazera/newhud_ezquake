@@ -31,6 +31,14 @@ void GameDataReset();
 void GameDataCenterPrint(const char* str);
 void GameDataCenterPrintClear();
 
+// Visual iconset picker: opens (scanning hudpacks/ for available sets),
+// closes, and drives the live full-HUD preview while hovering a card.
+void GameDataOpenStylePicker();
+void GameDataCloseStylePicker();
+bool GameDataStylePickerOpen();
+void GameDataPreviewIconset(const char* path); // hover: temporary override
+void GameDataEndPreviewIconset();              // hover out: back to the cvar
+
 } // namespace rmlui
 } // namespace ezquake
 

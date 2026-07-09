@@ -72,8 +72,62 @@ RmlHudState g_hud;
 struct EditorState {
 	Rml::Element* dragging = nullptr;
 	Rml::Vector2f grab_offset; // mouse - element top-left at grab time
+	bool picker_open = false;  // visual iconset picker overlay
 };
 EditorState g_editor;
+
+void StylePickerClose(); // defined below
+
+/*
+ * Style picker interactions: hovering a card live-previews the whole HUD
+ * with that iconset; clicking applies it to the cvar; the close button
+ * (or ESC) dismisses the overlay.
+ */
+class PickerEventListener : public Rml::EventListener {
+public:
+	void ProcessEvent(Rml::Event& event) override
+	{
+		Rml::Element* target = event.GetTargetElement();
+
+		if (event.GetId() == Rml::EventId::Click) {
+			for (Rml::Element* el = target; el; el = el->GetParentNode()) {
+				if (el->GetId() == "styleclose") {
+					StylePickerClose();
+					return;
+				}
+			}
+		}
+
+		/* Find the card (element carrying the setpath attribute). */
+		Rml::Element* card = target;
+		while (card && !card->HasAttribute("setpath")) {
+			card = card->GetParentNode();
+		}
+		if (!card) {
+			return;
+		}
+		const Rml::String path = card->GetAttribute<Rml::String>("setpath", "");
+		if (path.empty()) {
+			return;
+		}
+
+		switch (event.GetId()) {
+			case Rml::EventId::Click:
+				Cvar_Set(&hud_newhudeditor_iconset, (char*)path.c_str());
+				ezquake::rmlui::GameDataEndPreviewIconset();
+				break;
+			case Rml::EventId::Mouseover:
+				ezquake::rmlui::GameDataPreviewIconset(path.c_str());
+				break;
+			case Rml::EventId::Mouseout:
+				ezquake::rmlui::GameDataEndPreviewIconset();
+				break;
+			default:
+				break;
+		}
+	}
+};
+PickerEventListener g_picker_listener;
 
 bool RmlModeEnabled()
 {
@@ -124,6 +178,11 @@ void LoadHudDocument()
 		LoadLayout();
 		if (EditorModeEnabled()) {
 			g_hud.document->SetClass("edit", true);
+		}
+		if (Rml::Element* picker = g_hud.document->GetElementById("stylepicker")) {
+			picker->AddEventListener("click", &g_picker_listener);
+			picker->AddEventListener("mouseover", &g_picker_listener);
+			picker->AddEventListener("mouseout", &g_picker_listener);
 		}
 		Com_Printf("RmlUI HUD: loaded document %s\n", path);
 	}
@@ -294,6 +353,27 @@ void EditorExit()
 	Com_Printf("RmlUI HUD: edit mode OFF (layout saved to %s)\n", LAYOUT_FILE);
 }
 
+void StylePickerOpen()
+{
+	if (!g_hud.initialized || !g_hud.context || !g_hud.document) {
+		Com_Printf("RmlUI HUD: style picker needs the HUD active (hud_newhudeditor 1 + a map)\n");
+		return;
+	}
+	ezquake::rmlui::GameDataOpenStylePicker();
+	g_editor.picker_open = true;
+	key_dest = key_hudeditor;
+	Com_Printf("RmlUI HUD: style picker - hover previews live, click applies, ESC closes\n");
+}
+
+void StylePickerClose()
+{
+	ezquake::rmlui::GameDataCloseStylePicker();
+	g_editor.picker_open = false;
+	if (!EditorModeEnabled()) {
+		key_dest = key_game;
+	}
+}
+
 void EnsureContext()
 {
 	if (g_hud.context || !g_hud.initialized || g_hud.width <= 0 || g_hud.height <= 0) {
@@ -343,6 +423,19 @@ static void HUD_RmlUi_Edit_f(void)
 	}
 }
 
+static void HUD_RmlUi_Style_f(void)
+{
+	if (g_editor.picker_open) {
+		StylePickerClose();
+	}
+	else {
+		if (!RmlModeEnabled()) {
+			Cvar_SetValue(&hud_newhudeditor, 1);
+		}
+		StylePickerOpen();
+	}
+}
+
 void HUD_RmlUi_Init(void)
 {
 	if (g_hud.initialized) {
@@ -372,6 +465,7 @@ void HUD_RmlUi_Init(void)
 	Cvar_Register(&hud_newhudeditor_iconset);
 	Cmd_AddCommand("hud_newhudeditor_reload", HUD_RmlUi_Reload_f);
 	Cmd_AddCommand("hud_newhudeditor_edit", HUD_RmlUi_Edit_f);
+	Cmd_AddCommand("hud_newhudeditor_style", HUD_RmlUi_Style_f);
 
 	g_hud.initialized = true;
 	Com_Printf("RmlUI HUD: initialised (RmlUi %s). Set hud_newhudeditor 1 to use it.\n",
@@ -480,25 +574,31 @@ void HUD_RmlUi_SyncGameState(void)
 
 int HUD_RmlUi_InEditorMode(void)
 {
-	return (g_hud.initialized && EditorModeEnabled()) ? 1 : 0;
+	return (g_hud.initialized && (EditorModeEnabled() || g_editor.picker_open)) ? 1 : 0;
 }
 
 void HUD_RmlUi_MouseEvent(void* mouse_state)
 {
 	mouse_state_t* ms = (mouse_state_t*)mouse_state;
-	if (!ms || !g_hud.initialized || !EditorModeEnabled() || !g_hud.context) {
+	if (!ms || !g_hud.initialized || !g_hud.context ||
+		!(EditorModeEnabled() || g_editor.picker_open)) {
 		return;
 	}
 
 	const float mx = (float)ms->x;
 	const float my = (float)ms->y;
 
-	/* Feed the context first so hover state is current for the drag. */
+	/* Feed the context first so hover state is current for the drag and
+	 * the picker's mouseover/click events fire. */
 	g_hud.context->ProcessMouseMove((int)mx, (int)my, 0);
+
+	/* Dragging is an edit-mode gesture; while the style picker is open
+	 * clicks belong to its cards (handled by the event listener). */
+	const bool allow_drag = EditorModeEnabled() && !g_editor.picker_open;
 
 	if (ms->button_down >= 1 && ms->button_down <= 3) {
 		g_hud.context->ProcessMouseButtonDown(ms->button_down - 1, 0);
-		if (ms->button_down == 1) {
+		if (allow_drag && ms->button_down == 1) {
 			EditorStartDrag(mx, my);
 		}
 	}
@@ -525,7 +625,12 @@ void HUD_RmlUi_EditorKey(int key, int unichar, int down)
 
 	switch (key) {
 		case K_ESCAPE:
-			EditorExit();
+			if (g_editor.picker_open) {
+				StylePickerClose();
+			}
+			else {
+				EditorExit();
+			}
 			break;
 		case K_MWHEELUP:
 			g_hud.context->ProcessMouseWheel(Rml::Vector2f(0.f, -1.f), 0);

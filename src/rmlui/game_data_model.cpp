@@ -41,6 +41,11 @@ extern qbool sb_showscores, sb_showteamscores;
 
 namespace {
 
+struct IconsetRow {
+	Rml::String name;
+	Rml::String path;
+};
+
 struct PlayerRow {
 	Rml::String name;
 	Rml::String team;
@@ -145,6 +150,8 @@ struct HudModel {
 	int mvd = 0;               // 0 no, 1 MVD, 2 QTV
 	// presentation
 	Rml::String iconpath;      // icon lookup prefix (hud_newhudeditor_iconset)
+	bool stylepicker = false;  // visual iconset picker overlay
+	Rml::Vector<IconsetRow> iconsets;
 	// events
 	Rml::String centerprint;   // current centerprint text ('\n' separated)
 	bool centerprint_visible = false;
@@ -163,6 +170,10 @@ bool model_ready = false;
 /* Centerprint state pushed by the engine hook (survives model recreation). */
 Rml::String cp_text;
 double cp_stamp = -1.0; // cl.time when received; < 0 = none
+
+/* Style-picker hover preview: overrides the cvar-driven iconpath. */
+Rml::String preview_path;
+bool preview_active = false;
 
 const char* WeaponLabel(int weapon_num)
 {
@@ -419,7 +430,12 @@ void ReadEngineState(HudModel& m)
 	m.showteamscores = sb_showteamscores != 0;
 
 	// -- presentation --
-	m.iconpath = hud_newhudeditor_iconset.string ? hud_newhudeditor_iconset.string : "";
+	if (preview_active) {
+		m.iconpath = preview_path; // live hover preview wins over the cvar
+	}
+	else {
+		m.iconpath = hud_newhudeditor_iconset.string ? hud_newhudeditor_iconset.string : "";
+	}
 
 	// -- scoreboard: players sorted by frags (spectators last) --
 	m.players.clear();
@@ -489,6 +505,12 @@ bool GameDataCreate(Rml::Context* context)
 	if (!constructor) {
 		return false;
 	}
+
+	if (auto row = constructor.RegisterStruct<IconsetRow>()) {
+		row.RegisterMember("name", &IconsetRow::name);
+		row.RegisterMember("path", &IconsetRow::path);
+	}
+	constructor.RegisterArray<Rml::Vector<IconsetRow>>();
 
 	if (auto row = constructor.RegisterStruct<PlayerRow>()) {
 		row.RegisterMember("name", &PlayerRow::name);
@@ -573,6 +595,8 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("mvd", &data.mvd);
 	// presentation
 	constructor.Bind("iconpath", &data.iconpath);
+	constructor.Bind("stylepicker", &data.stylepicker);
+	constructor.Bind("iconsets", &data.iconsets);
 	// events
 	constructor.RegisterArray<Rml::Vector<Rml::String>>();
 	constructor.Bind("centerprint", &data.centerprint);
@@ -697,6 +721,78 @@ void GameDataCenterPrintClear()
 {
 	cp_text.clear();
 	cp_stamp = -1.0;
+}
+
+void GameDataOpenStylePicker()
+{
+	data.iconsets.clear();
+	data.iconsets.push_back({"Clássico", "/ui/rml/hud/icons/"});
+
+	/* Scan <basedir>/<gamedir>/hudpacks/ for installed icon packs. */
+	const char* gamedirs[] = {"id1", "qw"};
+	for (const char* gd : gamedirs) {
+		char path[MAX_OSPATH];
+		snprintf(path, sizeof(path), "%s/%s/hudpacks", com_basedir, gd);
+		dir_t dir = Sys_listdir(path, ".*", SORT_BY_NAME);
+		for (int i = 0; i < dir.numfiles; ++i) {
+			if (!dir.files[i].isdir) {
+				continue;
+			}
+			const char* name = dir.files[i].name;
+			if (!name[0] || !strcmp(name, ".") || !strcmp(name, "..")) {
+				continue;
+			}
+			bool duplicate = false;
+			for (const IconsetRow& row : data.iconsets) {
+				if (row.name == name) {
+					duplicate = true;
+					break;
+				}
+			}
+			if (!duplicate) {
+				IconsetRow row;
+				row.name = name;
+				row.path = Rml::String("/hudpacks/") + name + "/";
+				data.iconsets.push_back(row);
+			}
+		}
+	}
+
+	data.stylepicker = true;
+	if (model_ready) {
+		model_handle.DirtyVariable("iconsets");
+		model_handle.DirtyVariable("stylepicker");
+	}
+}
+
+void GameDataCloseStylePicker()
+{
+	GameDataEndPreviewIconset();
+	data.stylepicker = false;
+	if (model_ready) {
+		model_handle.DirtyVariable("stylepicker");
+	}
+}
+
+bool GameDataStylePickerOpen()
+{
+	return data.stylepicker;
+}
+
+void GameDataPreviewIconset(const char* path)
+{
+	if (!path || !path[0]) {
+		return;
+	}
+	preview_path = path;
+	preview_active = true;
+	/* iconpath updates (and dirties) on the next Sync. */
+}
+
+void GameDataEndPreviewIconset()
+{
+	preview_active = false;
+	preview_path.clear();
 }
 
 } // namespace rmlui
