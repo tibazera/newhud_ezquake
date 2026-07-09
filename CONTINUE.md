@@ -116,7 +116,13 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - M1 foundation hardening (code complete, PENDING user acceptance)
+### 2026-07-09 - M1 ACCEPTED by the user on screen
+
+After the GL state-cache fix: fullscreen works, hud_newhudeditor 0<->1
+toggles correctly (classic HUD returns/disappears), no black screen, no
+crash. M1 acceptance criteria met. Next: M2 (complete GameDataModel).
+
+### 2026-07-09 - M1 foundation hardening (code complete, accepted above)
 
 Commits `df353bbe` (code) + submodule gitlinks commit. All five M1 items:
 1. vid_restart survival: HUD_RmlUi_VidShutdown() hooked in VID_Shutdown()
