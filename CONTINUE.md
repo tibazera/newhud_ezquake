@@ -116,7 +116,16 @@ vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 ## Progress Log
 
-### 2026-07-09 - COURSE CORRECTION from user feedback + M3.5 (PENDING acceptance)
+### 2026-07-09 - M3.5 v3: faithful classic sbar (PENDING acceptance)
+
+User: "o HUD tá pior que o original". Fix round (commit `9efecf00`):
+GL_NEAREST on LoadTexture (pixel art was blurred by linear filtering) and
+hud.rml v3 recreating the REAL sbar/ibar layout with the original LCD
+digit lumps (num_/anum_ via derived digit fields) instead of modern boxes
+with font numbers. run-newhud.bat now launches fullscreen.
+Next feature (already agreed): the drag editor.
+
+### 2026-07-09 - COURSE CORRECTION from user feedback + M3.5 (earlier round)
 
 User rejected the text-first M3 look ("só texto, sem imagem... não to
 gostando") and asked about click-and-drag editing. Agreed replan:
