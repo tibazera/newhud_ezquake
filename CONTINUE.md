@@ -764,3 +764,24 @@ arrastáveis + voltar pros outros pelo picker; alça de resize no Visor. Limita�
 conhecida: o painel show/hide usa a lista global de widgets (ids clássicos), então
 no Visor só alterna os comuns (vida/armadura/kill feed/mensagens/avisos) — drag e
 resize funcionam em todos os blocos. Pedir screenshot pra calibrar posições/tamanho.
+
+### 2026-07-10 (tarde) — Visor: mira removida + layout restaurado; drag mais robusto
+
+Feedback: "desconfigurou tudo na tela, inclusive a mira, ela ficou torta / minimal
+ainda não arrasta". Eu tinha reescrito o Visor com posições em `%` ESTIMADAS às
+cegas (violando a regra do arquivo) e adicionado uma mira própria.
+
+- **Mira removida do Visor:** o ezQuake já desenha o crosshair nativo do jogador;
+  a segunda mira (RmlUi) brigava com ela = "torta". `#crosshair-container` fora.
+- **Layout restaurado à composição original:** desfiz as posições `%` estimadas.
+  Voltei aos GRUPOS do visor_hud.rcss com flex interno e posições dp originais
+  (header/left-col/keys/vitals/scores/weapon), agora cada grupo = 1 widget `w_*`
+  arrastável (safe-zone dropada; grupos são filhos diretos do body p/ o SaveLayout
+  pegar). Alça de resize em cada grupo.
+- **`TopLevelFor` robusto (hud_rmlui.cpp):** era "filho direto do body"; agora
+  resolve p/ o próprio elemento ou o ancestral mais próximo com id `w_*`
+  (superconjunto do antigo). Cobre widgets aninhados e o w_panel do Minimal.
+
+Build verde; exe + visor deployados; `rmlui_layout_hud_visor.cfg` apagado.
+PENDENTE (pedido ao usuário): screenshot do Minimal e do Visor em modo edição p/
+confirmar drag e calibrar posições — não dá pra renderizar localmente.
