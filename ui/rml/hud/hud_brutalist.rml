@@ -1,0 +1,267 @@
+<rml>
+<head>
+    <title>HUD Brutalist</title>
+    <link type="text/rcss" href="/ui/rcss/base.rcss"/>
+    <link type="text/rcss" href="/ui/rcss/hud.rcss"/>
+    <style>
+        body {
+            width: 100%;
+            height: 100%;
+        }
+        .widget { position: absolute; }
+        .center { left: 50%; transform: translateX(-50%); }
+
+        /* ---- classic sbar pieces (dp = resolution independent) ---- */
+        img.icon { width: 40dp; height: 40dp; vertical-align: bottom; image-color: #8b0000; }
+        .digslot { display: inline-block; width: 26dp; height: 40dp; vertical-align: bottom; }
+        .digslot img { width: 26dp; height: 40dp; }
+
+        #w_face   { left: 50%; margin-left: -34dp; bottom: 3%; }
+        #w_health {
+            left: 50%; margin-left: 8dp; bottom: 3%;
+            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #8b0000;
+        }
+        #w_armor  {
+            left: 50%; margin-left: -160dp; bottom: 3%;
+            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #333333;
+        }
+        #w_ammo   {
+            left: 50%; margin-left: 96dp; bottom: 3%;
+            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #333333;
+        }
+
+        /* ---- weapon strip (centered via full-width + text-align) ---- */
+        #w_weapons { left: 0; right: 0; bottom: 15%; text-align: center; }
+        .wslot { display: inline-block; padding: 1dp; background-color: #00000060; border: 1dp #333333; }
+        .wslot img { width: 40dp; height: 26dp; image-color: #666666; }
+        .wslot.owned img { image-color: #ffffff; }
+        .wslot.owned { background-color: #111111e0; border-color: #666666; }
+        .wslot.active { background-color: #8b000040; border-color: #8b0000; }
+
+        /* ---- per-type ammo counts ---- */
+        #w_ammocounts {
+            right: 2%; bottom: 15%; padding: 6dp 10dp;
+            background-color: #111111e0; border: 2dp #333333;
+            font-family: Space Grotesk; font-size: 15dp; font-weight: bold;
+            text-align: right; color: #ffffff; text-transform: uppercase;
+        }
+        #w_ammocounts .arow { display: block; }
+        #w_ammocounts img { width: 18dp; height: 18dp; vertical-align: middle; margin-right: 5dp; image-color: #8b0000; }
+        #w_ammocounts span { vertical-align: middle; }
+
+        /* ---- items ---- */
+        #w_items { right: 2%; bottom: 27%; }
+        #w_items img { width: 28dp; height: 28dp; margin: 1dp; image-color: #b30000; }
+
+        /* ---- corners ---- */
+        #w_frags {
+            right: 2%; bottom: 3%; font-family: Space Grotesk;
+            font-size: 26dp; font-weight: bold; color: #8b0000;
+        }
+        #w_speed { left: 2%; bottom: 3%; font-size: 14dp; color: #666666; }
+        #w_clock {
+            right: 2%; top: 2%; padding: 3dp 10dp; text-align: right;
+            background-color: #111111e0; border: 1dp #333333;
+        }
+        #w_clock .clock { font-family: Space Grotesk; font-size: 24dp; font-weight: bold; }
+        #w_fps {
+            right: 2%; top: 11%; padding: 3dp 10dp; text-align: right;
+            background-color: #111111e0; border: 1dp #333333; font-size: 14dp; color: #666666;
+        }
+        #w_fps .net { display: block; }
+
+        /* ---- kill feed (deaths) ---- */
+        #w_deaths { left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #ff3333; }
+        #w_deaths .dline { display: block; }
+
+        /* ---- notify / centerprint ---- */
+        #w_notify { left: 1%; top: 22%; width: 46%; font-size: 14dp; color: #ffffff; }
+        #w_notify .nline { display: block; }
+        #w_centerprint {
+            top: 26%; left: 15%; width: 70%; text-align: center;
+            font-family: Space Grotesk; font-size: 22dp; font-weight: bold;
+            color: #ffffff; text-transform: uppercase; letter-spacing: 2dp; white-space: pre-line;
+        }
+
+        /* ---- style picker (same behaviour as hud.rml, brutalist skin) ---- */
+        #stylepicker {
+            position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
+            padding: 12dp; background-color: #111111f2;
+            border: 2dp #8b0000;
+        }
+        #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #ffffff; margin-bottom: 2dp; text-transform: uppercase; }
+        #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #666666; margin-bottom: 8dp; }
+        #stylepicker .seclbl { display: block; font-size: 11dp; color: #666666; margin: 10dp 0 3dp 0; text-transform: uppercase; letter-spacing: 1dp; }
+        #stylepicker .row {
+            display: block; padding: 8dp 10dp; margin: 3dp 0;
+            background-color: #1a1a1a; border: 2dp #333333;
+            font-size: 14dp; font-weight: bold; color: #d8d8d8;
+        }
+        #stylepicker .row:hover { border-color: #8b0000; }
+        #stylepicker .row.current { background-color: #2a1010; color: #ff6666; border-color: #8b0000; }
+        #stylepicker .row.sel { border-color: #b30000; background-color: #2a1010; color: #ffffff; }
+        #stylepicker .scur { display: inline-block; font-size: 11dp; color: #ff3333; margin-left: 8dp; }
+        #styleclose {
+            display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0;
+            text-align: center; font-size: 13dp; font-weight: bold; color: #ffffff;
+            background-color: #333333;
+        }
+        #styleclose:hover { background-color: #8b0000; }
+
+        /* ---- config panel (edit mode) ---- */
+        #configpanel {
+            position: absolute; top: 16%; left: 2%;
+            width: 210dp; padding: 12dp 14dp;
+            background-color: #111111f2; border: 1dp #333333;
+        }
+        #configpanel .ctitle { display: block; font-family: Space Grotesk; font-size: 15dp; font-weight: bold; color: #ffffff; margin-bottom: 3dp; text-transform: uppercase; }
+        #configpanel .chelp { display: block; font-size: 12dp; color: #666666; margin-bottom: 10dp; }
+        #configpanel .crow {
+            display: block; padding: 5dp 6dp; margin: 1dp 0;
+            font-size: 14dp; color: #d8d8d8;
+        }
+        #configpanel .crow:hover { background-color: #ffffff10; }
+        #configpanel .cbox {
+            display: inline-block; width: 16dp; height: 16dp; vertical-align: middle;
+            margin-right: 8dp; border: 1dp #666666; text-align: center;
+            font-size: 13dp; color: #ff3333;
+        }
+        #configpanel .crow.on .cbox { background-color: #8b0000; }
+        #configpanel .crow.off { color: #666666; }
+
+        /* ---- edit mode hint ---- */
+        #edithint {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
+            color: #ffffff; background-color: #8b0000e0; text-transform: uppercase;
+        }
+        body.edit .widget { border: 1dp #ff333390; background-color: #8b000010; }
+        .whidden { display: none; }
+    </style>
+</head>
+
+<!--
+    Brutalist skin: same widget structure and data bindings as hud.rml,
+    restyled with the vkQuake base.rcss palette (black/red) instead of
+    the blue-tinted inline theme. Kept as a separate document (not an
+    edit to hud.rml) so both remain selectable from the style picker.
+-->
+<body data-model="hud">
+
+    <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
+
+    <div id="w_deaths" class="widget">
+        <div class="dline" data-for="d : deaths">{{ d }}</div>
+    </div>
+
+    <div id="w_notify" class="widget">
+        <div class="nline" data-for="line : notify_lines">{{ line }}</div>
+    </div>
+
+    <div id="w_clock" class="widget">
+        <span class="clock">{{ match_time }}</span>
+    </div>
+
+    <div id="w_fps" class="widget">
+        <span class="net">{{ fps }} fps &nbsp; {{ ping }} ms</span>
+        <span class="net" data-if="spectator">SPEC</span>
+        <span class="net" data-if="demo_playback">DEMO</span>
+    </div>
+
+    <div id="w_weapons" class="widget">
+        <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2"><img data-attr-src="iconpath + (weapon_num == 2 ? 'inv2_shotgun' : 'inv_shotgun')"/></span>
+        <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3"><img data-attr-src="iconpath + (weapon_num == 3 ? 'inv2_sshotgun' : 'inv_sshotgun')"/></span>
+        <span class="wslot" data-class-owned="has_nailgun" data-class-active="weapon_num == 4"><img data-attr-src="iconpath + (weapon_num == 4 ? 'inv2_nailgun' : 'inv_nailgun')"/></span>
+        <span class="wslot" data-class-owned="has_super_nailgun" data-class-active="weapon_num == 5"><img data-attr-src="iconpath + (weapon_num == 5 ? 'inv2_snailgun' : 'inv_snailgun')"/></span>
+        <span class="wslot" data-class-owned="has_grenade_launcher" data-class-active="weapon_num == 6"><img data-attr-src="iconpath + (weapon_num == 6 ? 'inv2_rlaunch' : 'inv_rlaunch')"/></span>
+        <span class="wslot" data-class-owned="has_rocket_launcher" data-class-active="weapon_num == 7"><img data-attr-src="iconpath + (weapon_num == 7 ? 'inv2_srlaunch' : 'inv_srlaunch')"/></span>
+        <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8"><img data-attr-src="iconpath + (weapon_num == 8 ? 'inv2_lightng' : 'inv_lightng')"/></span>
+    </div>
+
+    <div id="w_armor" class="widget" data-if="armor > 0">
+        <img class="icon" data-if="armor_type == 1" data-attr-src="iconpath + 'sb_armor1'"/>
+        <img class="icon" data-if="armor_type == 2" data-attr-src="iconpath + 'sb_armor2'"/>
+        <img class="icon" data-if="armor_type == 3" data-attr-src="iconpath + 'sb_armor3'"/>
+        <span class="digslot"><img data-if="armor_d100 != ''" data-attr-src="iconpath + armor_d100"/></span>
+        <span class="digslot"><img data-if="armor_d10 != ''" data-attr-src="iconpath + armor_d10"/></span>
+        <span class="digslot"><img data-if="armor_d1 != ''" data-attr-src="iconpath + armor_d1"/></span>
+    </div>
+
+    <div id="w_face" class="widget">
+        <img class="icon" data-attr-src="iconpath + face_icon"/>
+    </div>
+
+    <div id="w_health" class="widget">
+        <span class="digslot"><img data-if="health_d100 != ''" data-attr-src="iconpath + health_d100"/></span>
+        <span class="digslot"><img data-if="health_d10 != ''" data-attr-src="iconpath + health_d10"/></span>
+        <span class="digslot"><img data-if="health_d1 != ''" data-attr-src="iconpath + health_d1"/></span>
+    </div>
+
+    <div id="w_ammo" class="widget" data-if="weapon_num &gt; 1">
+        <img class="icon" data-attr-src="iconpath + ammo_icon"/>
+        <span class="digslot"><img data-if="ammo_d100 != ''" data-attr-src="iconpath + ammo_d100"/></span>
+        <span class="digslot"><img data-if="ammo_d10 != ''" data-attr-src="iconpath + ammo_d10"/></span>
+        <span class="digslot"><img data-if="ammo_d1 != ''" data-attr-src="iconpath + ammo_d1"/></span>
+    </div>
+
+    <div id="w_ammocounts" class="widget">
+        <span class="arow"><img data-attr-src="iconpath + 'sb_shells'"/><span>{{ shells }}</span></span>
+        <span class="arow"><img data-attr-src="iconpath + 'sb_nails'"/><span>{{ nails }}</span></span>
+        <span class="arow"><img data-attr-src="iconpath + 'sb_rocket'"/><span>{{ rockets }}</span></span>
+        <span class="arow"><img data-attr-src="iconpath + 'sb_cells'"/><span>{{ cells }}</span></span>
+    </div>
+
+    <div id="w_items" class="widget">
+        <img data-if="quad" data-attr-src="iconpath + 'sb_quad'"/>
+        <img data-if="pent" data-attr-src="iconpath + 'sb_invuln'"/>
+        <img data-if="ring" data-attr-src="iconpath + 'sb_invis'"/>
+        <img data-if="suit" data-attr-src="iconpath + 'sb_suit'"/>
+        <img data-if="key1" data-attr-src="iconpath + 'sb_key1'"/>
+        <img data-if="key2" data-attr-src="iconpath + 'sb_key2'"/>
+        <img data-if="sigil1" data-attr-src="iconpath + 'sb_sigil1'"/>
+        <img data-if="sigil2" data-attr-src="iconpath + 'sb_sigil2'"/>
+        <img data-if="sigil3" data-attr-src="iconpath + 'sb_sigil3'"/>
+        <img data-if="sigil4" data-attr-src="iconpath + 'sb_sigil4'"/>
+    </div>
+
+    <div id="w_frags" class="widget">{{ frags }}</div>
+    <div id="w_speed" class="widget">{{ speed }} ups</div>
+
+    <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
+
+    <!-- edit-mode config panel: show/hide each element -->
+    <div id="configpanel" data-if="editmode">
+        <span class="ctitle">Elementos do HUD</span>
+        <span class="chelp">clique para mostrar/ocultar · arraste cada um na tela</span>
+        <div class="crow" data-for="w : widgets"
+             data-attr-wid="w.id"
+             data-class-on="w.visible"
+             data-class-off="!w.visible">
+            <span class="cbox">{{ w.visible ? '✓' : '' }}</span>{{ w.label }}
+        </div>
+    </div>
+
+    <!-- visual style picker: arrows navigate (live preview), Enter applies -->
+    <div id="stylepicker" data-if="stylepicker">
+        <span class="ptitle">Estilo do HUD</span>
+        <span class="psub">Setas navegam ícones · Enter aplica · ESC fecha</span>
+
+        <span class="seclbl">LAYOUT</span>
+        <div class="row" data-for="l : layouts"
+             data-attr-setdoc="l.path"
+             data-class-current="l.path == layoutpath">
+            {{ l.name }}
+        </div>
+
+        <span class="seclbl">CONJUNTO DE ÍCONES</span>
+        <div class="row" data-for="s : iconsets"
+             data-attr-setpath="s.path"
+             data-class-sel="s.path == picker_sel"
+             data-class-current="s.path == iconpath">
+            {{ s.name }}<span class="scur" data-if="s.path == iconpath">✓ em uso</span>
+        </div>
+        <div id="styleclose">Fechar</div>
+    </div>
+
+</body>
+</rml>

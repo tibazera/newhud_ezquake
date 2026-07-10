@@ -24,6 +24,59 @@
         .ya { color: #e0c040; }
         .ra { color: #ff4040; }
         .powerup { color: #60a0ff; font-weight: bold; }
+
+        /* ---- style picker: same behaviour/markup as hud.rml ---- */
+        #stylepicker {
+            position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
+            padding: 12dp; background-color: #0b1015f2;
+            border: 2dp #34506e; border-radius: 8dp;
+        }
+        #stylepicker .ptitle { display: block; text-align: center; font-size: 20dp; font-weight: bold; color: #ffffff; margin-bottom: 2dp; }
+        #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #8090a0; margin-bottom: 8dp; }
+        #stylepicker .seclbl { display: block; font-size: 11dp; color: #6d7d90; margin: 10dp 0 3dp 0; }
+        #stylepicker .row {
+            display: block; padding: 8dp 10dp; margin: 3dp 0; border-radius: 5dp;
+            background-color: #1a2230; border: 2dp #1a2230;
+            font-size: 14dp; font-weight: bold; color: #d8dee6;
+        }
+        #stylepicker .row:hover { border: 2dp #3a5a80; }
+        #stylepicker .row.current { background-color: #16281a; color: #8fe0a0; border-color: #2f6a3a; }
+        #stylepicker .row.sel { border: 2dp #5aa0e0; background-color: #223448; color: #ffffff; }
+        #stylepicker .scur { display: inline-block; font-size: 11dp; color: #60c060; margin-left: 8dp; }
+        #styleclose {
+            display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0;
+            text-align: center; font-size: 13dp; font-weight: bold; color: #ffffff;
+            background-color: #304050; border-radius: 5dp;
+        }
+        #styleclose:hover { background-color: #4a6078; }
+
+        /* ---- config panel (edit mode) ---- */
+        #configpanel {
+            position: absolute; top: 16%; left: 2%;
+            width: 210dp; padding: 12dp 14dp;
+            background-color: #0d1016f2; border: 1dp #33465c; border-radius: 8dp;
+        }
+        #configpanel .ctitle { display: block; font-size: 15dp; font-weight: bold; color: #ffffff; margin-bottom: 3dp; }
+        #configpanel .chelp { display: block; font-size: 12dp; color: #7d8ba0; margin-bottom: 10dp; }
+        #configpanel .crow {
+            display: block; padding: 5dp 6dp; margin: 1dp 0; border-radius: 4dp;
+            font-size: 14dp; color: #c0c8d2;
+        }
+        #configpanel .crow:hover { background-color: #ffffff10; }
+        #configpanel .cbox {
+            display: inline-block; width: 16dp; height: 16dp; vertical-align: middle;
+            margin-right: 8dp; border: 1dp #5a6b7e; border-radius: 3dp; text-align: center;
+            font-size: 13dp; color: #60c060;
+        }
+        #configpanel .crow.on .cbox { background-color: #2a5a2a; }
+        #configpanel .crow.off { color: #6a7280; }
+
+        /* ---- edit mode hint ---- */
+        #edithint {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
+            color: #ffe080; background-color: #000000c0;
+        }
     </style>
 </head>
 
@@ -33,6 +86,8 @@
     match clock, armor type colours, powerups) for on-screen acceptance.
 -->
 <body data-model="hud">
+    <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
+
     <div id="panel">
         <div class="row muted">{{ map }} &nbsp; {{ match_time }} &nbsp; fps {{ fps }}</div>
         <div class="row stat" data-class-low="health &lt; 25">HP {{ health }}</div>
@@ -48,6 +103,32 @@
             <span data-if="pent">PENT </span>
             <span data-if="ring">RING</span>
         </div>
+    </div>
+
+    <!-- No per-widget config panel here: minimal.rml is a single monolithic
+         #panel, not separate w_* widgets, so the show/hide list wouldn't
+         apply to anything visible in this layout. -->
+
+    <!-- visual style picker: arrows navigate (live preview), Enter applies -->
+    <div id="stylepicker" data-if="stylepicker">
+        <span class="ptitle">Estilo do HUD</span>
+        <span class="psub">Setas navegam ícones · Enter aplica · ESC fecha</span>
+
+        <span class="seclbl">LAYOUT</span>
+        <div class="row" data-for="l : layouts"
+             data-attr-setdoc="l.path"
+             data-class-current="l.path == layoutpath">
+            {{ l.name }}
+        </div>
+
+        <span class="seclbl">CONJUNTO DE ÍCONES</span>
+        <div class="row" data-for="s : iconsets"
+             data-attr-setpath="s.path"
+             data-class-sel="s.path == picker_sel"
+             data-class-current="s.path == iconpath">
+            {{ s.name }}<span class="scur" data-if="s.path == iconpath">✓ em uso</span>
+        </div>
+        <div id="styleclose">Fechar</div>
     </div>
 </body>
 </rml>

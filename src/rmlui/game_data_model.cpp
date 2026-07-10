@@ -127,6 +127,14 @@ struct HudModel {
 	bool sigil4 = false;
 	Rml::String face_icon;     // classic face lump for current state (face1..face5, face_quad, ...)
 	Rml::String ammo_icon;     // ammo-box lump for the active weapon (sb_shells...)
+	// Terminal Visor HUD (ui_lab port): health tier 0(critical)..4(full),
+	// per-ammo-type weapon flags, and axe-melee flag.
+	int face_index = 4;
+	bool is_axe = false;
+	bool is_shells_weapon = false;
+	bool is_nails_weapon = false;
+	bool is_rockets_weapon = false;
+	bool is_cells_weapon = false;
 	// Classic LCD digit lumps (num_*/anum_* when low); "" = digit hidden.
 	Rml::String health_d100, health_d10, health_d1;
 	Rml::String armor_d100, armor_d10, armor_d1;
@@ -362,6 +370,17 @@ void ReadEngineState(HudModel& m)
 	m.sigil4 = (stat_items & IT_SIGIL4) != 0;
 	m.face_icon = FaceIcon(m.health, stat_items);
 	m.ammo_icon = AmmoIcon(m.weapon_num);
+	{
+		int tier = m.health / 20;
+		if (tier < 0) tier = 0;
+		if (tier > 4) tier = 4;
+		m.face_index = tier;
+	}
+	m.is_axe = (m.weapon_num == 1);
+	m.is_shells_weapon = (m.weapon_num == 2 || m.weapon_num == 3);
+	m.is_nails_weapon = (m.weapon_num == 4 || m.weapon_num == 5);
+	m.is_rockets_weapon = (m.weapon_num == 6 || m.weapon_num == 7);
+	m.is_cells_weapon = (m.weapon_num == 8);
 	SetDigits(m.health, m.health <= 25, m.health_d100, m.health_d10, m.health_d1);
 	SetDigits(m.armor, m.armor <= 25, m.armor_d100, m.armor_d10, m.armor_d1);
 	SetDigits(m.ammo, m.ammo <= 10, m.ammo_d100, m.ammo_d10, m.ammo_d1);
@@ -627,6 +646,12 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("sigil4", &data.sigil4);
 	constructor.Bind("face_icon", &data.face_icon);
 	constructor.Bind("ammo_icon", &data.ammo_icon);
+	constructor.Bind("face_index", &data.face_index);
+	constructor.Bind("is_axe", &data.is_axe);
+	constructor.Bind("is_shells_weapon", &data.is_shells_weapon);
+	constructor.Bind("is_nails_weapon", &data.is_nails_weapon);
+	constructor.Bind("is_rockets_weapon", &data.is_rockets_weapon);
+	constructor.Bind("is_cells_weapon", &data.is_cells_weapon);
 	constructor.Bind("health_d100", &data.health_d100);
 	constructor.Bind("health_d10", &data.health_d10);
 	constructor.Bind("health_d1", &data.health_d1);
@@ -687,6 +712,9 @@ bool GameDataCreate(Rml::Context* context)
 	data.layouts.clear();
 	data.layouts.push_back({"Clássico",    "ui/rml/hud/hud.rml"});
 	data.layouts.push_back({"Competitivo", "ui/rml/hud/hud_print.rml"});
+	data.layouts.push_back({"Brutalist",   "ui/rml/hud/hud_brutalist.rml"});
+	data.layouts.push_back({"Minimal",     "ui/rml/hud/minimal.rml"});
+	data.layouts.push_back({"Visor",       "ui/rml/hud/hud_visor.rml"});
 
 	model_handle = constructor.GetModelHandle();
 	model_ready = true;
@@ -737,6 +765,12 @@ void GameDataSync()
 	DirtyIfChanged("sigil4", data.sigil4, prev.sigil4);
 	DirtyIfChanged("face_icon", data.face_icon, prev.face_icon);
 	DirtyIfChanged("ammo_icon", data.ammo_icon, prev.ammo_icon);
+	DirtyIfChanged("face_index", data.face_index, prev.face_index);
+	DirtyIfChanged("is_axe", data.is_axe, prev.is_axe);
+	DirtyIfChanged("is_shells_weapon", data.is_shells_weapon, prev.is_shells_weapon);
+	DirtyIfChanged("is_nails_weapon", data.is_nails_weapon, prev.is_nails_weapon);
+	DirtyIfChanged("is_rockets_weapon", data.is_rockets_weapon, prev.is_rockets_weapon);
+	DirtyIfChanged("is_cells_weapon", data.is_cells_weapon, prev.is_cells_weapon);
 	DirtyIfChanged("health_d100", data.health_d100, prev.health_d100);
 	DirtyIfChanged("health_d10", data.health_d10, prev.health_d10);
 	DirtyIfChanged("health_d1", data.health_d1, prev.health_d1);

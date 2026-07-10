@@ -202,6 +202,9 @@ void LoadFonts()
 	if (!regular) {
 		Com_Printf("RmlUI HUD: WARNING could not load ui/fonts/LatoLatin-Regular.ttf\n");
 	}
+	/* Used by the Brutalist/Visor layouts (vkQuake ui_lab palette/type). */
+	Rml::LoadFontFace("ui/fonts/SpaceGrotesk-Bold.ttf");
+	Rml::LoadFontFace("ui/fonts/SpaceMono-Regular.ttf");
 	g_hud.fonts_loaded = true;
 }
 

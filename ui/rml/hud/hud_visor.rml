@@ -1,0 +1,260 @@
+<rml>
+<head>
+    <title>Terminal Visor HUD</title>
+    <link type="text/rcss" href="/ui/rcss/base.rcss"/>
+    <link type="text/rcss" href="/ui/rcss/visor_hud.rcss"/>
+    <style>
+        /* ---- style picker + edit panel: same behaviour as hud.rml, dark-green skin ---- */
+        #stylepicker {
+            position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
+            padding: 12dp; background-color: #0a1a0ef2;
+            border: 2dp #3a6b3a;
+        }
+        #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #c8e6c8; margin-bottom: 2dp; text-transform: uppercase; }
+        #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #5a8a5a; margin-bottom: 8dp; }
+        #stylepicker .seclbl { display: block; font-size: 11dp; color: #5a8a5a; margin: 10dp 0 3dp 0; text-transform: uppercase; letter-spacing: 1dp; }
+        #stylepicker .row {
+            display: block; padding: 8dp 10dp; margin: 3dp 0;
+            background-color: #12220fe0; border: 2dp #3a6b3a;
+            font-size: 14dp; font-weight: bold; color: #c8e6c8;
+        }
+        #stylepicker .row:hover { border-color: #4aaa4a; }
+        #stylepicker .row.current { background-color: #16281a; color: #8fe0a0; border-color: #4aaa4a; }
+        #stylepicker .row.sel { border-color: #6adc6a; background-color: #16281a; color: #ffffff; }
+        #stylepicker .scur { display: inline-block; font-size: 11dp; color: #6adc6a; margin-left: 8dp; }
+        #styleclose {
+            display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0;
+            text-align: center; font-size: 13dp; font-weight: bold; color: #c8e6c8;
+            background-color: #1a2f1a;
+        }
+        #styleclose:hover { background-color: #3a6b3a; }
+
+        #configpanel {
+            position: absolute; top: 16%; left: 2%;
+            width: 210dp; padding: 12dp 14dp;
+            background-color: #0a1a0ef2; border: 1dp #3a6b3a;
+        }
+        #configpanel .ctitle { display: block; font-family: Space Grotesk; font-size: 15dp; font-weight: bold; color: #c8e6c8; margin-bottom: 3dp; text-transform: uppercase; }
+        #configpanel .chelp { display: block; font-size: 12dp; color: #5a8a5a; margin-bottom: 10dp; }
+        #configpanel .crow { display: block; padding: 5dp 6dp; margin: 1dp 0; font-size: 14dp; color: #c8e6c8; }
+        #configpanel .crow:hover { background-color: #ffffff10; }
+        #configpanel .cbox {
+            display: inline-block; width: 16dp; height: 16dp; vertical-align: middle;
+            margin-right: 8dp; border: 1dp #3a6b3a; text-align: center; font-size: 13dp; color: #6adc6a;
+        }
+        #configpanel .crow.on .cbox { background-color: #2a5a2a; }
+        #configpanel .crow.off { color: #5a6b5a; }
+
+        #edithint {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
+            color: #c8e6c8; background-color: #3a6b3ae0; text-transform: uppercase;
+        }
+
+        /* ---- centerprint / kill feed, kept as plain overlays ---- */
+        #w_centerprint {
+            position: absolute; top: 26%; left: 15%; width: 70%; text-align: center;
+            font-family: Space Grotesk; font-size: 22dp; font-weight: bold;
+            color: #c8e6c8; text-transform: uppercase; letter-spacing: 2dp; white-space: pre-line;
+        }
+        #w_deaths { position: absolute; left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #e67878; }
+        #w_deaths .dline { display: block; }
+
+        /* ---- crosshair (plain divs, no custom <reticle> element) ---- */
+        .crosshair-simple {
+            position: absolute; top: 50%; left: 50%; width: 1dp; height: 1dp;
+            pointer-events: none;
+        }
+        .crosshair-simple .ch-ring {
+            position: absolute; top: -14dp; left: -14dp; width: 28dp; height: 28dp;
+            border: 2dp #4aaa4acc; border-radius: 14dp;
+        }
+        .crosshair-simple .ch-dot {
+            position: absolute; top: -3dp; left: -3dp; width: 6dp; height: 6dp;
+            background-color: #4aaa4acc; border-radius: 3dp;
+        }
+        .crosshair-simple .ch-line { position: absolute; background-color: #4aaa4acc; }
+        .crosshair-simple .ch-line-top    { top: -22dp; left: -1dp; width: 2dp; height: 8dp; }
+        .crosshair-simple .ch-line-bottom { top: 14dp;  left: -1dp; width: 2dp; height: 8dp; }
+        .crosshair-simple .ch-line-left   { top: -1dp; left: -22dp; width: 8dp; height: 2dp; }
+        .crosshair-simple .ch-line-right  { top: -1dp; left: 14dp;  width: 8dp; height: 2dp; }
+
+        .crosshair-simple.weapon-axe .ch-ring { width: 6dp; height: 6dp; top: -3dp; left: -3dp; border-radius: 3dp; }
+        .crosshair-simple.weapon-lg  .ch-ring { width: 10dp; height: 10dp; top: -5dp; left: -5dp; }
+        .crosshair-simple.weapon-ssg .ch-ring { width: 36dp; height: 36dp; top: -18dp; left: -18dp; }
+    </style>
+</head>
+
+<!--
+    Terminal Visor HUD, ported from ui_lab/hud.rml (vkQuake example mod) to
+    our "hud" GameDataModel. Dropped: monsters/secrets objectives (no
+    singleplayer stats in QuakeWorld) and the Lua weapon-switch/reticle
+    controllers (not wired into ezquake's RmlUi build) - crosshair sizing
+    is driven by data-class instead of a Lua-toggled class.
+-->
+<body data-model="hud" class="visor-hud"
+      data-class-tier-0="face_index == 0"
+      data-class-tier-1="face_index == 1"
+      data-class-tier-2="face_index == 2"
+      data-class-tier-3="face_index == 3"
+      data-class-has-quad="quad"
+      data-class-has-pent="pent"
+      data-class-has-ring="ring"
+      data-class-has-suit="suit">
+
+    <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
+
+    <div class="visor-safe-zone">
+
+        <div class="visor-bracket bracket-tl"></div>
+        <div class="visor-bracket bracket-tr"></div>
+        <div class="visor-bracket bracket-bl"></div>
+        <div class="visor-bracket bracket-br"></div>
+
+        <div class="visor-header">
+            <span class="sys-label">RNG-VISOR v2.1</span>
+            <span class="visor-header-sep">|</span>
+            <span class="sys-label">{{ map_title }}</span>
+            <span class="visor-header-sep">|</span>
+            <span class="sys-label">{{ match_time }}</span>
+        </div>
+
+        <div class="visor-left-col">
+            <div class="visor-powerups">
+                <div class="visor-powerup powerup-quad" data-if="quad"><span class="sys-label">SYS::QUAD</span></div>
+                <div class="visor-powerup powerup-pent" data-if="pent"><span class="sys-label">SYS::PENT</span></div>
+                <div class="visor-powerup powerup-ring" data-if="ring"><span class="sys-label">SYS::RING</span></div>
+                <div class="visor-powerup powerup-suit" data-if="suit"><span class="sys-label">SYS::SUIT</span></div>
+            </div>
+
+            <div class="visor-notify">
+                <span class="sys-label notify-header">SYS::MSG</span>
+                <div class="nline" data-for="line : notify_lines">{{ line }}</div>
+            </div>
+
+            <div class="visor-sigils" data-if="sigil1 || sigil2 || sigil3 || sigil4">
+                <span class="sys-label">SIGIL</span>
+                <div class="sigil-slots">
+                    <div class="sigil-slot" data-class-owned="sigil1">E1</div>
+                    <div class="sigil-slot" data-class-owned="sigil2">E2</div>
+                    <div class="sigil-slot" data-class-owned="sigil3">E3</div>
+                    <div class="sigil-slot" data-class-owned="sigil4">E4</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="visor-keys">
+            <div class="visor-key" data-class-owned="key1"><span class="sys-label">KEY::SILVER</span></div>
+            <div class="visor-key" data-class-owned="key2"><span class="sys-label">KEY::GOLD</span></div>
+        </div>
+
+        <div class="visor-vitals">
+            <div class="visor-panel visor-health" data-class-critical="health &lt; 25">
+                <span class="sys-label">HP</span>
+                <span class="stat-value stat-health">{{ health }}</span>
+                <div class="critical-tag" data-if="health &lt; 25"><span class="sys-label">CRITICAL</span></div>
+            </div>
+
+            <div class="visor-panel visor-armor" data-if="armor > 0"
+                 data-class-armor-green="armor_type == 1"
+                 data-class-armor-yellow="armor_type == 2"
+                 data-class-armor-red="armor_type == 3">
+                <span class="sys-label">ARM</span>
+                <span class="stat-value stat-armor">{{ armor }}</span>
+            </div>
+        </div>
+
+        <!-- DM mini-scoreboard (QuakeWorld has no SP objectives/monster stats) -->
+        <div class="visor-dm-scores">
+            <div class="visor-panel visor-scores-panel">
+                <span class="sys-label">DM::SCORES</span>
+                <div class="dm-player-list">
+                    <div class="dm-player-row" data-for="p : players">
+                        <span class="dm-name">{{ p.name }}</span>
+                        <span class="dm-frags">{{ p.frags }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="visor-weapon-area"
+             data-class-shells="is_shells_weapon"
+             data-class-nails="is_nails_weapon"
+             data-class-rockets="is_rockets_weapon"
+             data-class-cells="is_cells_weapon">
+
+            <div class="visor-weapon-name">
+                <span class="sys-label visor-weapon-label">WPN::{{ weapon_label }}</span>
+            </div>
+
+            <div class="visor-panel visor-ammo" data-if="!is_axe" data-class-low="ammo &lt; 10">
+                <span class="sys-label">AMMO</span>
+                <span class="stat-value stat-ammo">{{ ammo }}</span>
+            </div>
+
+            <div class="visor-melee" data-if="is_axe"><span class="sys-label">MELEE</span></div>
+
+            <div class="visor-reserves" data-if="!is_axe">
+                <span class="reserve" data-class-active="is_shells_weapon">S {{ shells }}</span>
+                <span class="reserve" data-class-active="is_nails_weapon">N {{ nails }}</span>
+                <span class="reserve" data-class-active="is_rockets_weapon">R {{ rockets }}</span>
+                <span class="reserve" data-class-active="is_cells_weapon">C {{ cells }}</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Crosshair stays outside the safe zone: always true viewport center.
+         ui_lab used a custom <reticle> element (C++ side, never ported to
+         ezquake's RmlUi build) - reimplemented here as plain divs/CSS. -->
+    <div id="crosshair-container" class="crosshair-simple"
+         data-class-weapon-axe="is_axe"
+         data-class-weapon-sg="weapon_num == 2"
+         data-class-weapon-ssg="weapon_num == 3"
+         data-class-weapon-ng="weapon_num == 4"
+         data-class-weapon-sng="weapon_num == 5"
+         data-class-weapon-gl="weapon_num == 6"
+         data-class-weapon-rl="weapon_num == 7"
+         data-class-weapon-lg="weapon_num == 8">
+        <div class="ch-ring"></div>
+        <div class="ch-dot"></div>
+        <div class="ch-line ch-line-top"></div>
+        <div class="ch-line ch-line-bottom"></div>
+        <div class="ch-line ch-line-left"></div>
+        <div class="ch-line ch-line-right"></div>
+    </div>
+
+    <div id="w_deaths">
+        <div class="dline" data-for="d : deaths">{{ d }}</div>
+    </div>
+
+    <div id="w_centerprint" data-if="centerprint_visible">{{ centerprint }}</div>
+
+    <div id="configpanel" data-if="editmode">
+        <span class="ctitle">Elementos do HUD</span>
+        <span class="chelp">Visor usa layout fixo (sem widgets arrastáveis individuais)</span>
+    </div>
+
+    <div id="stylepicker" data-if="stylepicker">
+        <span class="ptitle">Estilo do HUD</span>
+        <span class="psub">Setas navegam ícones · Enter aplica · ESC fecha</span>
+
+        <span class="seclbl">LAYOUT</span>
+        <div class="row" data-for="l : layouts"
+             data-attr-setdoc="l.path"
+             data-class-current="l.path == layoutpath">
+            {{ l.name }}
+        </div>
+
+        <span class="seclbl">CONJUNTO DE ÍCONES</span>
+        <div class="row" data-for="s : iconsets"
+             data-attr-setpath="s.path"
+             data-class-sel="s.path == picker_sel"
+             data-class-current="s.path == iconpath">
+            {{ s.name }}<span class="scur" data-if="s.path == iconpath">✓ em uso</span>
+        </div>
+        <div id="styleclose">Fechar</div>
+    </div>
+
+</body>
+</rml>
