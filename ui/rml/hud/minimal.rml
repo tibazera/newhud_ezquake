@@ -8,13 +8,14 @@
             width: 100%;
             height: 100%;
         }
-        #panel {
+        .widget { position: absolute; }
+        #w_panel {
             position: absolute;
-            left: 24px;
-            bottom: 24px;
-            padding: 12px 20px;
+            left: 3%;
+            bottom: 6%;
+            padding: 12dp 20dp;
             background-color: #000000c0;
-            border-radius: 6px;
+            border-radius: 6dp;
         }
         .row { display: block; font-size: 20dp; }
         .stat { font-size: 36dp; font-weight: bold; }
@@ -77,6 +78,8 @@
             padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
             color: #ffe080; background-color: #000000c0;
         }
+        body.edit .widget { border: 1dp #60a0ff90; }
+        .whidden { display: none; }
     </style>
 </head>
 
@@ -88,7 +91,7 @@
 <body data-model="hud">
     <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
 
-    <div id="panel">
+    <div id="w_panel" class="widget">
         <div class="row muted">{{ map }} &nbsp; {{ match_time }} &nbsp; fps {{ fps }}</div>
         <div class="row stat" data-class-low="health &lt; 25">HP {{ health }}</div>
         <div class="row stat" data-if="armor > 0"
@@ -105,9 +108,9 @@
         </div>
     </div>
 
-    <!-- No per-widget config panel here: minimal.rml is a single monolithic
-         #panel, not separate w_* widgets, so the show/hide list wouldn't
-         apply to anything visible in this layout. -->
+    <!-- Minimal is a single monolithic panel (id "w_panel", one draggable
+         widget) rather than separate w_* widgets, so it has no per-widget
+         show/hide config panel - you drag the whole panel as one block. -->
 
     <!-- visual style picker: arrows navigate (live preview), Enter applies -->
     <div id="stylepicker" data-if="stylepicker">

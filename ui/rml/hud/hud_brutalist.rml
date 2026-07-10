@@ -1,10 +1,19 @@
 <rml>
 <head>
     <title>HUD Brutalist</title>
-    <link type="text/rcss" href="/ui/rcss/base.rcss"/>
-    <link type="text/rcss" href="/ui/rcss/hud.rcss"/>
+    <!--
+        Self-contained (no external linked RCSS). The vkQuake base.rcss/hud.rcss
+        pulled in a global reset (* {}, div display block), font-effect
+        outlines and ~500 lines of unused .hud-*/.corner-stat classes; that
+        inherited layer broke hover/hit-testing here, so the editor drag and the
+        style picker clicks never landed (couldn't drag, couldn't switch back).
+        This document now mirrors hud.rml exactly - the layout proven to drag,
+        edit and switch - restyled with the black/red brutalist palette.
+    -->
     <style>
         body {
+            font-family: LatoLatin;
+            color: #ffffff;
             width: 100%;
             height: 100%;
         }
@@ -12,70 +21,72 @@
         .center { left: 50%; transform: translateX(-50%); }
 
         /* ---- classic sbar pieces (dp = resolution independent) ---- */
-        img.icon { width: 40dp; height: 40dp; vertical-align: bottom; image-color: #8b0000; }
+        img.icon { width: 40dp; height: 40dp; vertical-align: bottom; image-color: #c81e1e; }
         .digslot { display: inline-block; width: 26dp; height: 40dp; vertical-align: bottom; }
         .digslot img { width: 26dp; height: 40dp; }
 
         #w_face   { left: 50%; margin-left: -34dp; bottom: 3%; }
         #w_health {
             left: 50%; margin-left: 8dp; bottom: 3%;
-            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #8b0000;
+            padding: 2dp 8dp; background-color: #0a0a0af0; border: 2dp #8b0000;
         }
+        #w_health img.icon { image-color: #ffffff; }
         #w_armor  {
-            left: 50%; margin-left: -160dp; bottom: 3%;
-            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #333333;
+            left: 50%; margin-left: -164dp; bottom: 3%;
+            padding: 2dp 8dp; background-color: #0a0a0af0; border: 2dp #333333;
         }
         #w_ammo   {
-            left: 50%; margin-left: 96dp; bottom: 3%;
-            padding: 2dp 8dp; background-color: #111111e0; border: 2dp #333333;
+            left: 50%; margin-left: 100dp; bottom: 3%;
+            padding: 2dp 8dp; background-color: #0a0a0af0; border: 2dp #333333;
         }
 
         /* ---- weapon strip (centered via full-width + text-align) ---- */
         #w_weapons { left: 0; right: 0; bottom: 15%; text-align: center; }
         .wslot { display: inline-block; padding: 1dp; background-color: #00000060; border: 1dp #333333; }
-        .wslot img { width: 40dp; height: 26dp; image-color: #666666; }
+        .wslot img { width: 40dp; height: 26dp; image-color: #555555; }
         .wslot.owned img { image-color: #ffffff; }
-        .wslot.owned { background-color: #111111e0; border-color: #666666; }
-        .wslot.active { background-color: #8b000040; border-color: #8b0000; }
+        .wslot.owned { background-color: #0a0a0af0; border-color: #666666; }
+        .wslot.active { background-color: #8b000050; border-color: #ff2020; }
 
         /* ---- per-type ammo counts ---- */
         #w_ammocounts {
             right: 2%; bottom: 15%; padding: 6dp 10dp;
-            background-color: #111111e0; border: 2dp #333333;
+            background-color: #0a0a0af0; border: 2dp #333333;
             font-family: Space Grotesk; font-size: 15dp; font-weight: bold;
             text-align: right; color: #ffffff; text-transform: uppercase;
         }
         #w_ammocounts .arow { display: block; }
-        #w_ammocounts img { width: 18dp; height: 18dp; vertical-align: middle; margin-right: 5dp; image-color: #8b0000; }
+        #w_ammocounts img { width: 18dp; height: 18dp; vertical-align: middle; margin-right: 5dp; image-color: #c81e1e; }
         #w_ammocounts span { vertical-align: middle; }
 
         /* ---- items ---- */
         #w_items { right: 2%; bottom: 27%; }
-        #w_items img { width: 28dp; height: 28dp; margin: 1dp; image-color: #b30000; }
+        #w_items img { width: 28dp; height: 28dp; margin: 1dp; image-color: #d02020; }
 
         /* ---- corners ---- */
         #w_frags {
             right: 2%; bottom: 3%; font-family: Space Grotesk;
-            font-size: 26dp; font-weight: bold; color: #8b0000;
+            font-size: 30dp; font-weight: bold; color: #ff2020;
         }
-        #w_speed { left: 2%; bottom: 3%; font-size: 14dp; color: #666666; }
+        #w_speed { left: 2%; bottom: 3%; font-family: Space Grotesk; font-size: 14dp; color: #777777; }
         #w_clock {
             right: 2%; top: 2%; padding: 3dp 10dp; text-align: right;
-            background-color: #111111e0; border: 1dp #333333;
+            background-color: #0a0a0af0; border: 1dp #8b0000;
         }
-        #w_clock .clock { font-family: Space Grotesk; font-size: 24dp; font-weight: bold; }
+        #w_clock .clock { font-family: Space Grotesk; font-size: 24dp; font-weight: bold; color: #ffffff; }
         #w_fps {
             right: 2%; top: 11%; padding: 3dp 10dp; text-align: right;
-            background-color: #111111e0; border: 1dp #333333; font-size: 14dp; color: #666666;
+            background-color: #0a0a0af0; border: 1dp #333333;
+            font-family: Space Grotesk; font-size: 14dp; color: #777777;
         }
         #w_fps .net { display: block; }
 
         /* ---- kill feed (deaths) ---- */
-        #w_deaths { left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #ff3333; }
+        #w_deaths { left: 1%; top: 2%; width: 44%; font-family: Space Grotesk; font-size: 13dp; font-weight: bold; color: #ff3030; }
         #w_deaths .dline { display: block; }
 
         /* ---- notify / centerprint ---- */
-        #w_notify { left: 1%; top: 22%; width: 46%; font-size: 14dp; color: #ffffff; }
+        #w_notify { left: 1%; top: 22%; width: 46%; font-size: 14dp; color: #e8e8e8; }
         #w_notify .nline { display: block; }
         #w_centerprint {
             top: 26%; left: 15%; width: 70%; text-align: center;
@@ -83,39 +94,39 @@
             color: #ffffff; text-transform: uppercase; letter-spacing: 2dp; white-space: pre-line;
         }
 
-        /* ---- style picker (same behaviour as hud.rml, brutalist skin) ---- */
+        /* ---- style picker: centered via left:50% + negative margin-left
+           (same technique the HUD sbar uses; no %/auto/right/bottom). ---- */
         #stylepicker {
             position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
-            padding: 12dp; background-color: #111111f2;
-            border: 2dp #8b0000;
+            padding: 12dp; background-color: #0a0a0af8; border: 2dp #8b0000;
         }
-        #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #ffffff; margin-bottom: 2dp; text-transform: uppercase; }
-        #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #666666; margin-bottom: 8dp; }
-        #stylepicker .seclbl { display: block; font-size: 11dp; color: #666666; margin: 10dp 0 3dp 0; text-transform: uppercase; letter-spacing: 1dp; }
+        #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #ffffff; margin-bottom: 2dp; text-transform: uppercase; letter-spacing: 1dp; }
+        #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #777777; margin-bottom: 8dp; }
+        #stylepicker .seclbl { display: block; font-size: 11dp; color: #777777; margin: 10dp 0 3dp 0; text-transform: uppercase; letter-spacing: 1dp; }
         #stylepicker .row {
             display: block; padding: 8dp 10dp; margin: 3dp 0;
-            background-color: #1a1a1a; border: 2dp #333333;
+            background-color: #161616; border: 2dp #333333;
             font-size: 14dp; font-weight: bold; color: #d8d8d8;
         }
         #stylepicker .row:hover { border-color: #8b0000; }
-        #stylepicker .row.current { background-color: #2a1010; color: #ff6666; border-color: #8b0000; }
-        #stylepicker .row.sel { border-color: #b30000; background-color: #2a1010; color: #ffffff; }
-        #stylepicker .scur { display: inline-block; font-size: 11dp; color: #ff3333; margin-left: 8dp; }
+        #stylepicker .row.current { background-color: #2a0e0e; color: #ff6060; border-color: #8b0000; }
+        #stylepicker .row.sel { border-color: #ff2020; background-color: #2a0e0e; color: #ffffff; }
+        #stylepicker .scur { display: inline-block; font-size: 11dp; color: #ff3030; margin-left: 8dp; }
         #styleclose {
             display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0;
             text-align: center; font-size: 13dp; font-weight: bold; color: #ffffff;
-            background-color: #333333;
+            background-color: #2a2a2a;
         }
         #styleclose:hover { background-color: #8b0000; }
 
-        /* ---- config panel (edit mode) ---- */
+        /* ---- config panel (edit mode) — shown via data-if="editmode" ---- */
         #configpanel {
             position: absolute; top: 16%; left: 2%;
             width: 210dp; padding: 12dp 14dp;
-            background-color: #111111f2; border: 1dp #333333;
+            background-color: #0a0a0af8; border: 1dp #8b0000;
         }
         #configpanel .ctitle { display: block; font-family: Space Grotesk; font-size: 15dp; font-weight: bold; color: #ffffff; margin-bottom: 3dp; text-transform: uppercase; }
-        #configpanel .chelp { display: block; font-size: 12dp; color: #666666; margin-bottom: 10dp; }
+        #configpanel .chelp { display: block; font-size: 12dp; color: #777777; margin-bottom: 10dp; }
         #configpanel .crow {
             display: block; padding: 5dp 6dp; margin: 1dp 0;
             font-size: 14dp; color: #d8d8d8;
@@ -124,27 +135,27 @@
         #configpanel .cbox {
             display: inline-block; width: 16dp; height: 16dp; vertical-align: middle;
             margin-right: 8dp; border: 1dp #666666; text-align: center;
-            font-size: 13dp; color: #ff3333;
+            font-size: 13dp; color: #ff3030;
         }
         #configpanel .crow.on .cbox { background-color: #8b0000; }
         #configpanel .crow.off { color: #666666; }
 
-        /* ---- edit mode hint ---- */
+        /* ---- edit mode — hint shown via data-if="editmode" ---- */
         #edithint {
             position: absolute; top: 0; left: 0; right: 0;
-            padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
-            color: #ffffff; background-color: #8b0000e0; text-transform: uppercase;
+            padding: 6dp 16dp; text-align: center; font-family: Space Grotesk; font-size: 15dp; font-weight: bold;
+            color: #ffffff; background-color: #8b0000e0; text-transform: uppercase; letter-spacing: 1dp;
         }
-        body.edit .widget { border: 1dp #ff333390; background-color: #8b000010; }
+        body.edit .widget { border: 1dp #ff3030b0; background-color: #8b000018; }
         .whidden { display: none; }
     </style>
 </head>
 
 <!--
-    Brutalist skin: same widget structure and data bindings as hud.rml,
-    restyled with the vkQuake base.rcss palette (black/red) instead of
-    the blue-tinted inline theme. Kept as a separate document (not an
-    edit to hud.rml) so both remain selectable from the style picker.
+    Brutalist skin: identical widget structure and data bindings to hud.rml
+    (each element a top-level draggable widget id "w_*"), restyled with a
+    black/red palette and Space Grotesk numerals. Authored in the engine 2D
+    space (conwidth/conheight): positions in %, sizes in dp.
 -->
 <body data-model="hud">
 
@@ -228,6 +239,9 @@
     <div id="w_speed" class="widget">{{ speed }} ups</div>
 
     <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
+
+    <!-- Scoreboard (TAB) / team overlay / kill feed use the classic ezQuake
+         drawing (kept via the cl_screen.c gate). -->
 
     <!-- edit-mode config panel: show/hide each element -->
     <div id="configpanel" data-if="editmode">

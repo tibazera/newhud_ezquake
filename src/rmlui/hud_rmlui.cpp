@@ -10,6 +10,9 @@
 
 /* RmlUi first: pure C++ headers, keep them clear of engine macros. */
 #include <RmlUi/Core.h>
+#include <map>
+#include <string>
+#include <cmath>
 
 /*
  * Engine headers inside extern "C": cvar.h/quakedef.h assume q_shared.h
@@ -72,9 +75,24 @@ RmlHudState g_hud;
 struct EditorState {
 	Rml::Element* dragging = nullptr;
 	Rml::Vector2f grab_offset; // mouse - element top-left at grab time
+	Rml::Element* resizing = nullptr;   // widget being scaled by its corner grip
+	float resize_start_scale = 1.0f;    // scale when the resize gesture began
+	Rml::Vector2f resize_anchor;        // widget top-left (layout offset), stable
+	float resize_start_dist = 1.0f;     // anchor->mouse distance at grab time
 	bool picker_open = false;  // visual iconset picker overlay
 };
 EditorState g_editor;
+
+/* Per-widget scale factor (id -> scale), applied as transform: scale() from the
+ * top-left corner. Populated from the layout file, edited by the corner-grip
+ * resize gesture, persisted per document. Reset when a new document loads. */
+std::map<std::string, float> g_widget_scale;
+
+float WidgetScale(const Rml::String& id)
+{
+	auto it = g_widget_scale.find(id.c_str());
+	return (it != g_widget_scale.end()) ? it->second : 1.0f;
+}
 
 /* Layout-preset switch requested from the picker; applied at the start of the
  * next Frame() so the current document is not unloaded mid event-dispatch. */
@@ -217,6 +235,9 @@ void LoadHudDocument()
 		g_hud.context->UnloadDocument(g_hud.document);
 		g_hud.document = nullptr;
 	}
+	/* Per-widget scales are per document; LoadLayout repopulates from the new
+	 * document's layout file. */
+	g_widget_scale.clear();
 
 	const char* path = hud_newhudeditor_doc.string;
 	g_hud.document = g_hud.context->LoadDocument(path);
@@ -277,8 +298,19 @@ void ApplyElementPosition(Rml::Element* element, float x, float y)
 	element->SetProperty("margin-left", "0");
 	element->SetProperty("margin-top", "0");
 	/* Some widgets center via transform: translateX(-50%); once pinned to
-	 * absolute px that must be cleared or it would shift the element. */
-	element->SetProperty("transform", "none");
+	 * absolute px that must be cleared. Reuse the transform to carry the
+	 * per-widget resize scale (default 1 = no visible change), anchored to the
+	 * top-left so scaling grows toward the bottom-right (where the grip is). */
+	const float s = WidgetScale(element->GetId());
+	if (s > 1.001f || s < 0.999f) {
+		char t[32];
+		snprintf(t, sizeof(t), "scale(%.4f)", s);
+		element->SetProperty("transform", t);
+		element->SetProperty("transform-origin", "0px 0px");
+	}
+	else {
+		element->SetProperty("transform", "none");
+	}
 }
 
 /* Draggable HUD widgets are the top-level elements whose id starts with
@@ -310,6 +342,21 @@ void SaveLayout()
 	}
 
 	Rml::String out;
+	/* Scale lines first, so LoadLayout has the factor before it pins each
+	 * position (ApplyElementPosition reads WidgetScale to emit the transform). */
+	for (int i = 0; i < g_hud.document->GetNumChildren(); ++i) {
+		Rml::Element* child = g_hud.document->GetChild(i);
+		const Rml::String& id = child->GetId();
+		if (!IsWidgetId(id)) {
+			continue;
+		}
+		const float s = WidgetScale(id);
+		if (s > 1.001f || s < 0.999f) {
+			char line[128];
+			snprintf(line, sizeof(line), "scale %s %.4f\n", id.c_str(), s);
+			out += line;
+		}
+	}
 	for (int i = 0; i < g_hud.document->GetNumChildren(); ++i) {
 		Rml::Element* child = g_hud.document->GetChild(i);
 		const Rml::String& id = child->GetId();
@@ -379,7 +426,14 @@ void LoadLayout()
 		const Rml::String line = text.substr(start, end - start);
 		char id[64];
 		float fx = 0.0f, fy = 0.0f;
-		if (sscanf(line.c_str(), "pos %63s %f %f", id, &fx, &fy) == 3) {
+		float fscale = 1.0f;
+		if (sscanf(line.c_str(), "scale %63s %f", id, &fscale) == 2) {
+			/* Populated before the pos lines; clamp to the resize range. */
+			if (fscale >= 0.4f && fscale <= 4.0f) {
+				g_widget_scale[id] = fscale;
+			}
+		}
+		else if (sscanf(line.c_str(), "pos %63s %f %f", id, &fx, &fy) == 3) {
 			/* Fractions of the context. Legacy files stored absolute pixels
 			 * (values > 1); ignore those so they can't pin widgets off a
 			 * smaller screen - the element keeps its stylesheet position. */
@@ -450,6 +504,74 @@ void EditorEndDrag()
 	}
 }
 
+/* ---------------- editor: resizing (corner grip) ---------------- */
+
+/* True if the element, or any ancestor up to the widget, is the resize grip.
+ * Detecting the grip element (rather than a geometric corner zone) keeps this
+ * independent of the dp/px unit ambiguity in the editor's coordinate handling. */
+bool IsOnResizeGrip(Rml::Element* el)
+{
+	for (Rml::Element* e = el; e; e = e->GetParentNode()) {
+		if (e->IsClassSet("rgrip")) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void EditorStartResize(Rml::Element* w, float mx, float my)
+{
+	/* Freeze the current position first so the top-left anchor is stable while
+	 * scaling (same reason the drag freezes it). */
+	const Rml::Vector2f pos = w->GetAbsoluteOffset(Rml::BoxArea::Border);
+	g_editor.resizing = w;
+	g_editor.resize_start_scale = WidgetScale(w->GetId());
+	g_editor.resize_anchor = pos;
+	const float dx = mx - pos.x, dy = my - pos.y;
+	float dist = std::sqrt(dx * dx + dy * dy);
+	g_editor.resize_start_dist = (dist < 1.0f) ? 1.0f : dist;
+	ApplyElementPosition(w, pos.x, pos.y);
+}
+
+void EditorResizeMove(float mx, float my)
+{
+	if (!g_editor.resizing) {
+		return;
+	}
+	const float dx = mx - g_editor.resize_anchor.x, dy = my - g_editor.resize_anchor.y;
+	const float dist = std::sqrt(dx * dx + dy * dy);
+	float s = g_editor.resize_start_scale * (dist / g_editor.resize_start_dist);
+	if (s < 0.4f) s = 0.4f;
+	if (s > 4.0f) s = 4.0f;
+	g_widget_scale[g_editor.resizing->GetId().c_str()] = s;
+	/* Re-pin at the same anchor; ApplyElementPosition now emits scale(s). */
+	ApplyElementPosition(g_editor.resizing, g_editor.resize_anchor.x, g_editor.resize_anchor.y);
+}
+
+void EditorEndResize()
+{
+	if (g_editor.resizing) {
+		g_editor.resizing = nullptr;
+		SaveLayout();
+	}
+}
+
+/* Decide the gesture under the cursor: corner grip -> resize, body -> drag. */
+void EditorStartGesture(float mx, float my)
+{
+	Rml::Element* hover = g_hud.context->GetHoverElement();
+	Rml::Element* top = TopLevelFor(hover);
+	if (!top || !IsWidgetId(top->GetId())) {
+		return;
+	}
+	if (IsOnResizeGrip(hover)) {
+		EditorStartResize(top, mx, my);
+	}
+	else {
+		EditorStartDrag(mx, my);
+	}
+}
+
 /* ---------------- editor: mode switching ---------------- */
 
 void EditorEnter()
@@ -468,6 +590,7 @@ void EditorEnter()
 void EditorExit()
 {
 	EditorEndDrag();
+	EditorEndResize();
 	if (g_hud.document) {
 		g_hud.document->SetClass("edit", false);
 	}
@@ -774,14 +897,19 @@ void HUD_RmlUi_MouseEvent(void* mouse_state)
 	if (ms->button_down >= 1 && ms->button_down <= 3) {
 		g_hud.context->ProcessMouseButtonDown(ms->button_down - 1, 0);
 		if (allow_drag && ms->button_down == 1) {
-			EditorStartDrag(mx, my);
+			/* Corner grip -> resize, widget body -> drag. */
+			EditorStartGesture(mx, my);
 		}
 	}
 	else if (ms->button_up >= 1 && ms->button_up <= 3) {
 		g_hud.context->ProcessMouseButtonUp(ms->button_up - 1, 0);
 		if (ms->button_up == 1) {
 			EditorEndDrag();
+			EditorEndResize();
 		}
+	}
+	else if (g_editor.resizing) {
+		EditorResizeMove(mx, my);
 	}
 	else {
 		EditorDragMove(mx, my);

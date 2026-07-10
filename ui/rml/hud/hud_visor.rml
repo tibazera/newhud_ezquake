@@ -1,14 +1,193 @@
 <rml>
 <head>
     <title>Terminal Visor HUD</title>
-    <link type="text/rcss" href="/ui/rcss/base.rcss"/>
-    <link type="text/rcss" href="/ui/rcss/visor_hud.rcss"/>
+    <!--
+        Self-contained (no external linked RCSS). The vkQuake visor_hud.rcss set
+        `body.visor-hud { pointer-events: none }`, which disabled ALL input on the
+        document - so the editor couldn't drag anything and the style picker never
+        received clicks (you couldn't switch back to other layouts). The needed
+        styles are inlined here without that rule, and the content blocks are now
+        top-level draggable/resizable widgets (id "w_*") instead of a fixed safe
+        zone. Drag the body of a block to move it; drag its bottom-right grip to
+        resize it. The health-tier / powerup colour palettes are kept.
+    -->
     <style>
-        /* ---- style picker + edit panel: same behaviour as hud.rml, dark-green skin ---- */
+        body {
+            font-family: Space Grotesk;
+            font-size: 18dp;
+            color: #c8e6c8;
+            width: 100%;
+            height: 100%;
+        }
+        .widget { position: absolute; }
+
+        /* resize grip (bottom-right corner), shown only in edit mode */
+        .rgrip {
+            position: absolute; right: -2dp; bottom: -2dp;
+            width: 13dp; height: 13dp;
+            background-color: #4aaa4a; border: 1dp #0a1a0e;
+        }
+
+        /* ---- typography ---- */
+        .sys-label { font-family: Space Mono; font-size: 11dp; text-transform: uppercase; letter-spacing: 1dp; color: #5a8a5a; }
+        .stat-value { font-family: Space Mono; font-size: 28dp; color: #c8e6c8; }
+        .stat-health { font-size: 48dp; }
+        .stat-armor { font-size: 36dp; }
+        .stat-ammo { font-size: 40dp; }
+
+        /* ---- shared panel ---- */
+        .visor-panel { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+
+        /* ---- corner brackets (fixed decoration) ---- */
+        .visor-bracket { position: absolute; width: 40dp; height: 40dp; }
+        .bracket-tl { top: 12dp; left: 12dp; border-top: 2dp #3a6b3a; border-left: 2dp #3a6b3a; }
+        .bracket-tr { top: 12dp; right: 12dp; border-top: 2dp #3a6b3a; border-right: 2dp #3a6b3a; }
+        .bracket-bl { bottom: 12dp; left: 12dp; border-bottom: 2dp #3a6b3a; border-left: 2dp #3a6b3a; }
+        .bracket-br { bottom: 12dp; right: 12dp; border-bottom: 2dp #3a6b3a; border-right: 2dp #3a6b3a; }
+
+        /* ---- header bar ---- */
+        #w_header { top: 2%; left: 8%; right: 8%; height: 22dp; padding-left: 8dp; border-bottom: 1dp #3a6b3a; }
+        #w_header .sys-label { font-size: 10dp; color: #5a8a5a; vertical-align: middle; }
+        #w_header .visor-header-sep { font-family: Space Mono; font-size: 10dp; color: #3a6b3a; vertical-align: middle; margin: 0 8dp; }
+
+        /* ---- powerups / notify / sigils (left) ---- */
+        #w_powerups { top: 8%; left: 3%; }
+        .visor-powerup { display: inline-block; padding: 5dp 12dp; margin-right: 6dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        .powerup-quad { border-color: #3388ff; background-color: #0a0e1ad8; }
+        .powerup-quad .sys-label { color: #88bbff; }
+        .powerup-pent { border-color: #ff4444; background-color: #1a0a0ad8; }
+        .powerup-pent .sys-label { color: #ff8888; }
+        .powerup-ring { border-color: #666666; background-color: #0a0a0ad8; }
+        .powerup-ring .sys-label { color: #888888; }
+        .powerup-suit { border-color: #44ff44; background-color: #0a1a0ad8; }
+        .powerup-suit .sys-label { color: #66ff66; }
+
+        #w_notify { top: 18%; left: 3%; width: 40%; }
+        #w_notify .notify-header { display: block; margin-bottom: 3dp; }
+        #w_notify .nline { display: block; font-size: 13dp; color: #c8e6c8; }
+
+        #w_sigils { top: 32%; left: 3%; padding: 5dp 10dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        #w_sigils .sys-label { vertical-align: middle; margin-right: 8dp; }
+        .sigil-slot { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #2a4a2a; padding: 2dp 5dp; margin-right: 4dp; border: 1dp #2a4a2a; vertical-align: middle; }
+        .sigil-slot.owned { color: #4aaa4a; border-color: #4aaa4a; }
+
+        /* ---- keys (right) ---- */
+        #w_keys { top: 8%; right: 3%; text-align: right; }
+        .visor-key { display: block; padding: 5dp 10dp; margin-bottom: 6dp; border: 1dp #2a4a2a; background-color: #0a1a0e80; }
+        .visor-key .sys-label { color: #2a4a2a; }
+        .visor-key.owned { border-color: #d7b65c; background-color: #1a1608d8; }
+        .visor-key.owned .sys-label { color: #d7b65c; }
+
+        /* ---- vitals (bottom-left) ---- */
+        #w_health { left: 3%; bottom: 7%; }
+        #w_health .sys-label { display: block; }
+        #w_health .stat-value { display: block; }
+        #w_health.critical { border-color: #8a2a2a; background-color: #1a0a0ad8; }
+        .critical-tag .sys-label { color: #e67878; font-size: 10dp; }
+
+        #w_armor { left: 16%; bottom: 7%; }
+        #w_armor .sys-label { display: block; }
+        #w_armor .stat-value { display: block; }
+        #w_armor.armor-green .sys-label { color: #5a8a5a; }
+        #w_armor.armor-yellow { border-color: #8a7a2a; }
+        #w_armor.armor-yellow .sys-label { color: #aa9a3a; }
+        #w_armor.armor-yellow .stat-value { color: #e6d89a; }
+        #w_armor.armor-red { border-color: #8a3a3a; }
+        #w_armor.armor-red .sys-label { color: #aa5a3a; }
+        #w_armor.armor-red .stat-value { color: #e6a878; }
+
+        /* ---- scores (bottom-center) ---- */
+        #w_scores { left: 40%; bottom: 7%; }
+        #w_scores .sys-label { display: block; margin-bottom: 4dp; }
+        .dm-player-row { display: block; }
+        .dm-name { display: inline-block; width: 120dp; font-family: Space Mono; font-size: 11dp; color: #c8e6c8; }
+        .dm-frags { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #4aaa4a; }
+
+        /* ---- weapon readout (bottom-right) ---- */
+        #w_weapon { right: 3%; bottom: 7%; text-align: right; }
+        .visor-weapon-label { display: block; font-size: 14dp; color: #4aaa4a; letter-spacing: 2dp; margin-bottom: 4dp; }
+        #w_weapon.shells .visor-weapon-label { color: #aa8844; }
+        #w_weapon.nails .visor-weapon-label { color: #8888aa; }
+        #w_weapon.rockets .visor-weapon-label { color: #aa5533; }
+        #w_weapon.cells .visor-weapon-label { color: #5588aa; }
+        .visor-ammo { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        .visor-ammo .sys-label { display: block; }
+        .visor-ammo .stat-value { display: block; }
+        .visor-ammo.low { border-color: #8a2a2a; }
+        .visor-ammo.low .stat-value { color: #e67878; }
+        .visor-melee { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        .visor-melee .sys-label { color: #5a8a5a; font-size: 14dp; }
+        .visor-reserves { margin-top: 6dp; }
+        .reserve { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #3a5a3a; margin-left: 10dp; }
+        .reserve.active { color: #e6d89a; }
+
+        /* ---- kill feed + centerprint ---- */
+        #w_deaths { left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #e67878; }
+        #w_deaths .dline { display: block; }
+        #w_centerprint {
+            top: 26%; left: 15%; width: 70%; text-align: center;
+            font-family: Space Grotesk; font-size: 22dp; font-weight: bold;
+            color: #c8e6c8; text-transform: uppercase; letter-spacing: 2dp; white-space: pre-line;
+        }
+
+        /* ---- health-tier palettes (face_index 0..3; 4 = default green) ---- */
+        .tier-3 .visor-panel, .tier-3 #w_health, .tier-3 #w_armor, .tier-3 .visor-ammo { border-color: #5a6b3a; }
+        .tier-3 .sys-label { color: #7a8a4a; }
+        .tier-3 .stat-value { color: #dae6c8; }
+        .tier-3 .visor-bracket { border-color: #5a6b3a; }
+        .tier-2 .visor-panel, .tier-2 #w_health, .tier-2 #w_armor, .tier-2 .visor-ammo { border-color: #8a7a2a; background-color: #1a170ad8; }
+        .tier-2 .sys-label { color: #aa9a3a; }
+        .tier-2 .stat-value { color: #e6d89a; }
+        .tier-2 .visor-bracket { border-color: #8a7a2a; }
+        .tier-1 .visor-panel, .tier-1 #w_health, .tier-1 #w_armor, .tier-1 .visor-ammo { border-color: #8a4a2a; background-color: #1a0e0ad8; }
+        .tier-1 .sys-label { color: #aa6a3a; }
+        .tier-1 .stat-value { color: #e6a878; }
+        .tier-1 .visor-bracket { border-color: #8a4a2a; }
+        .tier-0 .visor-panel, .tier-0 #w_health, .tier-0 #w_armor, .tier-0 .visor-ammo { border-color: #8a2a2a; background-color: #1a0a0ad8; }
+        .tier-0 .sys-label { color: #aa3a3a; }
+        .tier-0 .stat-value { color: #e67878; }
+        .tier-0 .visor-bracket { border-color: #8a2a2a; }
+
+        /* ---- powerup overrides ---- */
+        .has-quad .visor-bracket { border-color: #3388ff; }
+        .has-quad .visor-panel, .has-quad #w_health, .has-quad #w_armor, .has-quad .visor-ammo { border-color: #3388ff; background-color: #0a0e1ad8; }
+        .has-quad .sys-label { color: #88bbff; }
+        .has-quad .stat-value { color: #c8d8f0; }
+        .has-pent .visor-bracket { border-color: #ff4444; }
+        .has-pent .visor-panel, .has-pent #w_health, .has-pent #w_armor, .has-pent .visor-ammo { border-color: #ff4444; background-color: #1a0a0ae0; }
+        .has-pent .sys-label { color: #ff8888; }
+        .has-pent .stat-value { color: #ffcccc; }
+        .has-suit .visor-bracket { border-color: #44ff44; }
+        .has-suit .visor-panel, .has-suit #w_health, .has-suit #w_armor, .has-suit .visor-ammo { border-color: #44ff44; background-color: #0a1a0ae8; }
+        .has-suit .sys-label { color: #66ff66; }
+        .has-suit .stat-value { color: #ccffcc; }
+
+        /* ---- crosshair (plain divs, fixed center, not a widget) ---- */
+        #crosshair-container { position: absolute; top: 50%; left: 50%; width: 1dp; height: 1dp; }
+        .ch-ring { position: absolute; top: -14dp; left: -14dp; width: 28dp; height: 28dp; border: 2dp #4aaa4acc; border-radius: 14dp; }
+        .ch-dot { position: absolute; top: -3dp; left: -3dp; width: 6dp; height: 6dp; background-color: #4aaa4acc; border-radius: 3dp; }
+        .ch-line { position: absolute; background-color: #4aaa4acc; }
+        .ch-line-top    { top: -22dp; left: -1dp; width: 2dp; height: 8dp; }
+        .ch-line-bottom { top: 14dp;  left: -1dp; width: 2dp; height: 8dp; }
+        .ch-line-left   { top: -1dp; left: -22dp; width: 8dp; height: 2dp; }
+        .ch-line-right  { top: -1dp; left: 14dp;  width: 8dp; height: 2dp; }
+        #crosshair-container.weapon-axe .ch-ring { width: 6dp; height: 6dp; top: -3dp; left: -3dp; border-radius: 3dp; }
+        #crosshair-container.weapon-lg  .ch-ring { width: 10dp; height: 10dp; top: -5dp; left: -5dp; }
+        #crosshair-container.weapon-ssg .ch-ring { width: 36dp; height: 36dp; top: -18dp; left: -18dp; }
+
+        /* ---- edit mode outline + hint ---- */
+        body.edit .widget { border: 1dp #6adc6a90; }
+        #edithint {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 6dp 16dp; text-align: center; font-family: Space Grotesk; font-size: 14dp; font-weight: bold;
+            color: #c8e6c8; background-color: #3a6b3ae0; text-transform: uppercase; letter-spacing: 1dp;
+        }
+        .whidden { display: none; }
+
+        /* ---- style picker (dark-green skin) ---- */
         #stylepicker {
             position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
-            padding: 12dp; background-color: #0a1a0ef2;
-            border: 2dp #3a6b3a;
+            padding: 12dp; background-color: #0a1a0ef8; border: 2dp #3a6b3a;
         }
         #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #c8e6c8; margin-bottom: 2dp; text-transform: uppercase; }
         #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #5a8a5a; margin-bottom: 8dp; }
@@ -29,10 +208,11 @@
         }
         #styleclose:hover { background-color: #3a6b3a; }
 
+        /* ---- edit config panel ---- */
         #configpanel {
             position: absolute; top: 16%; left: 2%;
-            width: 210dp; padding: 12dp 14dp;
-            background-color: #0a1a0ef2; border: 1dp #3a6b3a;
+            width: 220dp; padding: 12dp 14dp;
+            background-color: #0a1a0ef8; border: 1dp #3a6b3a;
         }
         #configpanel .ctitle { display: block; font-family: Space Grotesk; font-size: 15dp; font-weight: bold; color: #c8e6c8; margin-bottom: 3dp; text-transform: uppercase; }
         #configpanel .chelp { display: block; font-size: 12dp; color: #5a8a5a; margin-bottom: 10dp; }
@@ -44,55 +224,15 @@
         }
         #configpanel .crow.on .cbox { background-color: #2a5a2a; }
         #configpanel .crow.off { color: #5a6b5a; }
-
-        #edithint {
-            position: absolute; top: 0; left: 0; right: 0;
-            padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
-            color: #c8e6c8; background-color: #3a6b3ae0; text-transform: uppercase;
-        }
-
-        /* ---- centerprint / kill feed, kept as plain overlays ---- */
-        #w_centerprint {
-            position: absolute; top: 26%; left: 15%; width: 70%; text-align: center;
-            font-family: Space Grotesk; font-size: 22dp; font-weight: bold;
-            color: #c8e6c8; text-transform: uppercase; letter-spacing: 2dp; white-space: pre-line;
-        }
-        #w_deaths { position: absolute; left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #e67878; }
-        #w_deaths .dline { display: block; }
-
-        /* ---- crosshair (plain divs, no custom <reticle> element) ---- */
-        .crosshair-simple {
-            position: absolute; top: 50%; left: 50%; width: 1dp; height: 1dp;
-            pointer-events: none;
-        }
-        .crosshair-simple .ch-ring {
-            position: absolute; top: -14dp; left: -14dp; width: 28dp; height: 28dp;
-            border: 2dp #4aaa4acc; border-radius: 14dp;
-        }
-        .crosshair-simple .ch-dot {
-            position: absolute; top: -3dp; left: -3dp; width: 6dp; height: 6dp;
-            background-color: #4aaa4acc; border-radius: 3dp;
-        }
-        .crosshair-simple .ch-line { position: absolute; background-color: #4aaa4acc; }
-        .crosshair-simple .ch-line-top    { top: -22dp; left: -1dp; width: 2dp; height: 8dp; }
-        .crosshair-simple .ch-line-bottom { top: 14dp;  left: -1dp; width: 2dp; height: 8dp; }
-        .crosshair-simple .ch-line-left   { top: -1dp; left: -22dp; width: 8dp; height: 2dp; }
-        .crosshair-simple .ch-line-right  { top: -1dp; left: 14dp;  width: 8dp; height: 2dp; }
-
-        .crosshair-simple.weapon-axe .ch-ring { width: 6dp; height: 6dp; top: -3dp; left: -3dp; border-radius: 3dp; }
-        .crosshair-simple.weapon-lg  .ch-ring { width: 10dp; height: 10dp; top: -5dp; left: -5dp; }
-        .crosshair-simple.weapon-ssg .ch-ring { width: 36dp; height: 36dp; top: -18dp; left: -18dp; }
     </style>
 </head>
 
 <!--
-    Terminal Visor HUD, ported from ui_lab/hud.rml (vkQuake example mod) to
-    our "hud" GameDataModel. Dropped: monsters/secrets objectives (no
-    singleplayer stats in QuakeWorld) and the Lua weapon-switch/reticle
-    controllers (not wired into ezquake's RmlUi build) - crosshair sizing
-    is driven by data-class instead of a Lua-toggled class.
+    Terminal Visor HUD (ported from vkQuake ui_lab) on the "hud" GameDataModel.
+    Content blocks are top-level draggable/resizable widgets; brackets and the
+    crosshair stay fixed. Health-tier / powerup palettes drive off body classes.
 -->
-<body data-model="hud" class="visor-hud"
+<body data-model="hud"
       data-class-tier-0="face_index == 0"
       data-class-tier-1="face_index == 1"
       data-class-tier-2="face_index == 2"
@@ -102,112 +242,106 @@
       data-class-has-ring="ring"
       data-class-has-suit="suit">
 
-    <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
+    <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste p/ mover · puxe o canto ↘ p/ redimensionar · ESC sai</div>
 
-    <div class="visor-safe-zone">
+    <!-- fixed decorative chrome -->
+    <div class="visor-bracket bracket-tl"></div>
+    <div class="visor-bracket bracket-tr"></div>
+    <div class="visor-bracket bracket-bl"></div>
+    <div class="visor-bracket bracket-br"></div>
 
-        <div class="visor-bracket bracket-tl"></div>
-        <div class="visor-bracket bracket-tr"></div>
-        <div class="visor-bracket bracket-bl"></div>
-        <div class="visor-bracket bracket-br"></div>
-
-        <div class="visor-header">
-            <span class="sys-label">RNG-VISOR v2.1</span>
-            <span class="visor-header-sep">|</span>
-            <span class="sys-label">{{ map_title }}</span>
-            <span class="visor-header-sep">|</span>
-            <span class="sys-label">{{ match_time }}</span>
-        </div>
-
-        <div class="visor-left-col">
-            <div class="visor-powerups">
-                <div class="visor-powerup powerup-quad" data-if="quad"><span class="sys-label">SYS::QUAD</span></div>
-                <div class="visor-powerup powerup-pent" data-if="pent"><span class="sys-label">SYS::PENT</span></div>
-                <div class="visor-powerup powerup-ring" data-if="ring"><span class="sys-label">SYS::RING</span></div>
-                <div class="visor-powerup powerup-suit" data-if="suit"><span class="sys-label">SYS::SUIT</span></div>
-            </div>
-
-            <div class="visor-notify">
-                <span class="sys-label notify-header">SYS::MSG</span>
-                <div class="nline" data-for="line : notify_lines">{{ line }}</div>
-            </div>
-
-            <div class="visor-sigils" data-if="sigil1 || sigil2 || sigil3 || sigil4">
-                <span class="sys-label">SIGIL</span>
-                <div class="sigil-slots">
-                    <div class="sigil-slot" data-class-owned="sigil1">E1</div>
-                    <div class="sigil-slot" data-class-owned="sigil2">E2</div>
-                    <div class="sigil-slot" data-class-owned="sigil3">E3</div>
-                    <div class="sigil-slot" data-class-owned="sigil4">E4</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="visor-keys">
-            <div class="visor-key" data-class-owned="key1"><span class="sys-label">KEY::SILVER</span></div>
-            <div class="visor-key" data-class-owned="key2"><span class="sys-label">KEY::GOLD</span></div>
-        </div>
-
-        <div class="visor-vitals">
-            <div class="visor-panel visor-health" data-class-critical="health &lt; 25">
-                <span class="sys-label">HP</span>
-                <span class="stat-value stat-health">{{ health }}</span>
-                <div class="critical-tag" data-if="health &lt; 25"><span class="sys-label">CRITICAL</span></div>
-            </div>
-
-            <div class="visor-panel visor-armor" data-if="armor > 0"
-                 data-class-armor-green="armor_type == 1"
-                 data-class-armor-yellow="armor_type == 2"
-                 data-class-armor-red="armor_type == 3">
-                <span class="sys-label">ARM</span>
-                <span class="stat-value stat-armor">{{ armor }}</span>
-            </div>
-        </div>
-
-        <!-- DM mini-scoreboard (QuakeWorld has no SP objectives/monster stats) -->
-        <div class="visor-dm-scores">
-            <div class="visor-panel visor-scores-panel">
-                <span class="sys-label">DM::SCORES</span>
-                <div class="dm-player-list">
-                    <div class="dm-player-row" data-for="p : players">
-                        <span class="dm-name">{{ p.name }}</span>
-                        <span class="dm-frags">{{ p.frags }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="visor-weapon-area"
-             data-class-shells="is_shells_weapon"
-             data-class-nails="is_nails_weapon"
-             data-class-rockets="is_rockets_weapon"
-             data-class-cells="is_cells_weapon">
-
-            <div class="visor-weapon-name">
-                <span class="sys-label visor-weapon-label">WPN::{{ weapon_label }}</span>
-            </div>
-
-            <div class="visor-panel visor-ammo" data-if="!is_axe" data-class-low="ammo &lt; 10">
-                <span class="sys-label">AMMO</span>
-                <span class="stat-value stat-ammo">{{ ammo }}</span>
-            </div>
-
-            <div class="visor-melee" data-if="is_axe"><span class="sys-label">MELEE</span></div>
-
-            <div class="visor-reserves" data-if="!is_axe">
-                <span class="reserve" data-class-active="is_shells_weapon">S {{ shells }}</span>
-                <span class="reserve" data-class-active="is_nails_weapon">N {{ nails }}</span>
-                <span class="reserve" data-class-active="is_rockets_weapon">R {{ rockets }}</span>
-                <span class="reserve" data-class-active="is_cells_weapon">C {{ cells }}</span>
-            </div>
-        </div>
-
+    <div id="w_header" class="widget">
+        <span class="sys-label">RNG-VISOR v2.1</span>
+        <span class="visor-header-sep">|</span>
+        <span class="sys-label">{{ map_title }}</span>
+        <span class="visor-header-sep">|</span>
+        <span class="sys-label">{{ match_time }}</span>
+        <span class="rgrip" data-if="editmode"></span>
     </div>
 
-    <!-- Crosshair stays outside the safe zone: always true viewport center.
-         ui_lab used a custom <reticle> element (C++ side, never ported to
-         ezquake's RmlUi build) - reimplemented here as plain divs/CSS. -->
-    <div id="crosshair-container" class="crosshair-simple"
+    <div id="w_powerups" class="widget">
+        <span class="visor-powerup powerup-quad" data-if="quad"><span class="sys-label">SYS::QUAD</span></span>
+        <span class="visor-powerup powerup-pent" data-if="pent"><span class="sys-label">SYS::PENT</span></span>
+        <span class="visor-powerup powerup-ring" data-if="ring"><span class="sys-label">SYS::RING</span></span>
+        <span class="visor-powerup powerup-suit" data-if="suit"><span class="sys-label">SYS::SUIT</span></span>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_notify" class="widget">
+        <span class="sys-label notify-header">SYS::MSG</span>
+        <div class="nline" data-for="line : notify_lines">{{ line }}</div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_sigils" class="widget" data-if="sigil1 || sigil2 || sigil3 || sigil4">
+        <span class="sys-label">SIGIL</span>
+        <span class="sigil-slot" data-class-owned="sigil1">E1</span>
+        <span class="sigil-slot" data-class-owned="sigil2">E2</span>
+        <span class="sigil-slot" data-class-owned="sigil3">E3</span>
+        <span class="sigil-slot" data-class-owned="sigil4">E4</span>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_keys" class="widget">
+        <div class="visor-key" data-class-owned="key1"><span class="sys-label">KEY::SILVER</span></div>
+        <div class="visor-key" data-class-owned="key2"><span class="sys-label">KEY::GOLD</span></div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_health" class="widget visor-panel" data-class-critical="health &lt; 25">
+        <span class="sys-label">HP</span>
+        <span class="stat-value stat-health">{{ health }}</span>
+        <div class="critical-tag" data-if="health &lt; 25"><span class="sys-label">CRITICAL</span></div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_armor" class="widget visor-panel" data-if="armor > 0"
+         data-class-armor-green="armor_type == 1"
+         data-class-armor-yellow="armor_type == 2"
+         data-class-armor-red="armor_type == 3">
+        <span class="sys-label">ARM</span>
+        <span class="stat-value stat-armor">{{ armor }}</span>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_scores" class="widget visor-panel">
+        <span class="sys-label">DM::SCORES</span>
+        <div class="dm-player-row" data-for="p : players">
+            <span class="dm-name">{{ p.name }}</span>
+            <span class="dm-frags">{{ p.frags }}</span>
+        </div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_weapon" class="widget"
+         data-class-shells="is_shells_weapon"
+         data-class-nails="is_nails_weapon"
+         data-class-rockets="is_rockets_weapon"
+         data-class-cells="is_cells_weapon">
+        <span class="visor-weapon-label">WPN::{{ weapon_label }}</span>
+        <div class="visor-ammo" data-if="!is_axe" data-class-low="ammo &lt; 10">
+            <span class="sys-label">AMMO</span>
+            <span class="stat-value stat-ammo">{{ ammo }}</span>
+        </div>
+        <div class="visor-melee" data-if="is_axe"><span class="sys-label">MELEE</span></div>
+        <div class="visor-reserves" data-if="!is_axe">
+            <span class="reserve" data-class-active="is_shells_weapon">S {{ shells }}</span>
+            <span class="reserve" data-class-active="is_nails_weapon">N {{ nails }}</span>
+            <span class="reserve" data-class-active="is_rockets_weapon">R {{ rockets }}</span>
+            <span class="reserve" data-class-active="is_cells_weapon">C {{ cells }}</span>
+        </div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_deaths" class="widget">
+        <div class="dline" data-for="d : deaths">{{ d }}</div>
+        <span class="rgrip" data-if="editmode"></span>
+    </div>
+
+    <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
+
+    <!-- Crosshair stays at true viewport center (not a draggable widget). -->
+    <div id="crosshair-container"
          data-class-weapon-axe="is_axe"
          data-class-weapon-sg="weapon_num == 2"
          data-class-weapon-ssg="weapon_num == 3"
@@ -224,17 +358,19 @@
         <div class="ch-line ch-line-right"></div>
     </div>
 
-    <div id="w_deaths">
-        <div class="dline" data-for="d : deaths">{{ d }}</div>
-    </div>
-
-    <div id="w_centerprint" data-if="centerprint_visible">{{ centerprint }}</div>
-
+    <!-- edit-mode config panel: show/hide each widget -->
     <div id="configpanel" data-if="editmode">
         <span class="ctitle">Elementos do HUD</span>
-        <span class="chelp">Visor usa layout fixo (sem widgets arrastáveis individuais)</span>
+        <span class="chelp">clique p/ mostrar/ocultar · arraste p/ mover · canto ↘ p/ redimensionar</span>
+        <div class="crow" data-for="w : widgets"
+             data-attr-wid="w.id"
+             data-class-on="w.visible"
+             data-class-off="!w.visible">
+            <span class="cbox">{{ w.visible ? '✓' : '' }}</span>{{ w.label }}
+        </div>
     </div>
 
+    <!-- visual style picker -->
     <div id="stylepicker" data-if="stylepicker">
         <span class="ptitle">Estilo do HUD</span>
         <span class="psub">Setas navegam ícones · Enter aplica · ESC fecha</span>
