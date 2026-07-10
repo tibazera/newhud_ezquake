@@ -2,14 +2,14 @@
 <head>
     <title>Terminal Visor HUD</title>
     <!--
-        Self-contained (no external linked RCSS). The vkQuake visor_hud.rcss set
-        `body.visor-hud { pointer-events: none }`, which disabled ALL input on the
-        document - so the editor couldn't drag anything and the style picker never
-        received clicks (you couldn't switch back to other layouts). The needed
-        styles are inlined here without that rule, and the content blocks are now
-        top-level draggable/resizable widgets (id "w_*") instead of a fixed safe
-        zone. Drag the body of a block to move it; drag its bottom-right grip to
-        resize it. The health-tier / powerup colour palettes are kept.
+        Self-contained (no external linked RCSS). visor_hud.rcss set
+        body.visor-hud { pointer-events: none }, which disabled ALL input on the
+        document - the editor couldn't drag and the picker couldn't switch back.
+        The needed styles are inlined here without that rule. The original safe
+        zone is dropped so each content GROUP is a top-level draggable/resizable
+        widget (id "w_*") keeping its internal flex composition. The crosshair is
+        NOT drawn here - ezQuake renders the player's own crosshair; a second one
+        just fought it. Health-tier / powerup palettes preserved.
     -->
     <style>
         body {
@@ -21,12 +21,8 @@
         }
         .widget { position: absolute; }
 
-        /* resize grip (bottom-right corner), shown only in edit mode */
-        .rgrip {
-            position: absolute; right: -2dp; bottom: -2dp;
-            width: 13dp; height: 13dp;
-            background-color: #4aaa4a; border: 1dp #0a1a0e;
-        }
+        /* resize grip (bottom-right), shown only in edit mode */
+        .rgrip { position: absolute; right: -2dp; bottom: -2dp; width: 13dp; height: 13dp; background-color: #6adc6a; border: 1dp #0a1a0e; }
 
         /* ---- typography ---- */
         .sys-label { font-family: Space Mono; font-size: 11dp; text-transform: uppercase; letter-spacing: 1dp; color: #5a8a5a; }
@@ -34,25 +30,28 @@
         .stat-health { font-size: 48dp; }
         .stat-armor { font-size: 36dp; }
         .stat-ammo { font-size: 40dp; }
-
-        /* ---- shared panel ---- */
         .visor-panel { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
 
-        /* ---- corner brackets (fixed decoration) ---- */
-        .visor-bracket { position: absolute; width: 40dp; height: 40dp; }
+        /* ---- corner brackets (fixed decoration, never block input) ---- */
+        .visor-bracket { position: absolute; width: 40dp; height: 40dp; pointer-events: none; }
         .bracket-tl { top: 12dp; left: 12dp; border-top: 2dp #3a6b3a; border-left: 2dp #3a6b3a; }
         .bracket-tr { top: 12dp; right: 12dp; border-top: 2dp #3a6b3a; border-right: 2dp #3a6b3a; }
         .bracket-bl { bottom: 12dp; left: 12dp; border-bottom: 2dp #3a6b3a; border-left: 2dp #3a6b3a; }
         .bracket-br { bottom: 12dp; right: 12dp; border-bottom: 2dp #3a6b3a; border-right: 2dp #3a6b3a; }
 
-        /* ---- header bar ---- */
-        #w_header { top: 2%; left: 8%; right: 8%; height: 22dp; padding-left: 8dp; border-bottom: 1dp #3a6b3a; }
-        #w_header .sys-label { font-size: 10dp; color: #5a8a5a; vertical-align: middle; }
-        #w_header .visor-header-sep { font-family: Space Mono; font-size: 10dp; color: #3a6b3a; vertical-align: middle; margin: 0 8dp; }
+        /* ---- header bar (top) ---- */
+        #w_header {
+            top: 14dp; left: 60dp; right: 60dp; height: 22dp;
+            display: flex; align-items: center; gap: 10dp; padding-left: 8dp;
+            border-bottom: 1dp #3a6b3a;
+        }
+        #w_header .sys-label { font-size: 10dp; color: #5a8a5a; }
+        #w_header .visor-header-sep { font-family: Space Mono; font-size: 10dp; color: #3a6b3a; }
 
-        /* ---- powerups / notify / sigils (left) ---- */
-        #w_powerups { top: 8%; left: 3%; }
-        .visor-powerup { display: inline-block; padding: 5dp 12dp; margin-right: 6dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        /* ---- left column: powerups + notify + sigils ---- */
+        #w_leftcol { top: 58dp; left: 22dp; display: flex; flex-direction: column; gap: 10dp; max-width: 500dp; }
+        .visor-powerups { display: flex; flex-direction: row; gap: 6dp; }
+        .visor-powerup { padding: 5dp 14dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
         .powerup-quad { border-color: #3388ff; background-color: #0a0e1ad8; }
         .powerup-quad .sys-label { color: #88bbff; }
         .powerup-pent { border-color: #ff4444; background-color: #1a0a0ad8; }
@@ -61,68 +60,59 @@
         .powerup-ring .sys-label { color: #888888; }
         .powerup-suit { border-color: #44ff44; background-color: #0a1a0ad8; }
         .powerup-suit .sys-label { color: #66ff66; }
-
-        #w_notify { top: 18%; left: 3%; width: 40%; }
-        #w_notify .notify-header { display: block; margin-bottom: 3dp; }
-        #w_notify .nline { display: block; font-size: 13dp; color: #c8e6c8; }
-
-        #w_sigils { top: 32%; left: 3%; padding: 5dp 10dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
-        #w_sigils .sys-label { vertical-align: middle; margin-right: 8dp; }
-        .sigil-slot { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #2a4a2a; padding: 2dp 5dp; margin-right: 4dp; border: 1dp #2a4a2a; vertical-align: middle; }
+        .visor-notify .notify-header { display: block; margin-bottom: 3dp; }
+        .visor-notify .nline { display: block; font-size: 13dp; color: #c8e6c8; }
+        .visor-sigils { display: flex; align-items: center; gap: 8dp; padding: 5dp 10dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        .sigil-slots { display: flex; gap: 6dp; }
+        .sigil-slot { font-family: Space Mono; font-size: 11dp; color: #2a4a2a; padding: 2dp 5dp; border: 1dp #2a4a2a; }
         .sigil-slot.owned { color: #4aaa4a; border-color: #4aaa4a; }
 
-        /* ---- keys (right) ---- */
-        #w_keys { top: 8%; right: 3%; text-align: right; }
-        .visor-key { display: block; padding: 5dp 10dp; margin-bottom: 6dp; border: 1dp #2a4a2a; background-color: #0a1a0e80; }
+        /* ---- keys (top-right) ---- */
+        #w_keys { top: 50dp; right: 22dp; display: flex; flex-direction: column; gap: 6dp; align-items: flex-end; }
+        .visor-key { padding: 5dp 10dp; border: 1dp #2a4a2a; background-color: #0a1a0e80; }
         .visor-key .sys-label { color: #2a4a2a; }
         .visor-key.owned { border-color: #d7b65c; background-color: #1a1608d8; }
         .visor-key.owned .sys-label { color: #d7b65c; }
 
-        /* ---- vitals (bottom-left) ---- */
-        #w_health { left: 3%; bottom: 7%; }
-        #w_health .sys-label { display: block; }
-        #w_health .stat-value { display: block; }
-        #w_health.critical { border-color: #8a2a2a; background-color: #1a0a0ad8; }
+        /* ---- vitals: health + armor (bottom-left) ---- */
+        #w_vitals { left: 22dp; bottom: 22dp; display: flex; gap: 10dp; align-items: flex-end; }
+        .visor-health { display: flex; flex-direction: column; gap: 2dp; }
+        .visor-health.critical { border-color: #8a2a2a; background-color: #1a0a0ad8; }
         .critical-tag .sys-label { color: #e67878; font-size: 10dp; }
-
-        #w_armor { left: 16%; bottom: 7%; }
-        #w_armor .sys-label { display: block; }
-        #w_armor .stat-value { display: block; }
-        #w_armor.armor-green .sys-label { color: #5a8a5a; }
-        #w_armor.armor-yellow { border-color: #8a7a2a; }
-        #w_armor.armor-yellow .sys-label { color: #aa9a3a; }
-        #w_armor.armor-yellow .stat-value { color: #e6d89a; }
-        #w_armor.armor-red { border-color: #8a3a3a; }
-        #w_armor.armor-red .sys-label { color: #aa5a3a; }
-        #w_armor.armor-red .stat-value { color: #e6a878; }
+        .visor-armor { display: flex; flex-direction: column; gap: 2dp; }
+        .visor-armor.armor-green .sys-label { color: #5a8a5a; }
+        .visor-armor.armor-yellow { border-color: #8a7a2a; }
+        .visor-armor.armor-yellow .sys-label { color: #aa9a3a; }
+        .visor-armor.armor-yellow .stat-value { color: #e6d89a; }
+        .visor-armor.armor-red { border-color: #8a3a3a; }
+        .visor-armor.armor-red .sys-label { color: #aa5a3a; }
+        .visor-armor.armor-red .stat-value { color: #e6a878; }
 
         /* ---- scores (bottom-center) ---- */
-        #w_scores { left: 40%; bottom: 7%; }
-        #w_scores .sys-label { display: block; margin-bottom: 4dp; }
-        .dm-player-row { display: block; }
-        .dm-name { display: inline-block; width: 120dp; font-family: Space Mono; font-size: 11dp; color: #c8e6c8; }
-        .dm-frags { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #4aaa4a; }
+        #w_scores { left: 38%; bottom: 22dp; display: flex; flex-direction: column; gap: 4dp; min-width: 200dp; }
+        #w_scores .sys-label { margin-bottom: 2dp; }
+        .dm-player-row { display: flex; justify-content: space-between; gap: 16dp; padding: 2dp 4dp; }
+        .dm-name { font-family: Space Mono; font-size: 11dp; color: #c8e6c8; }
+        .dm-frags { font-family: Space Mono; font-size: 11dp; color: #4aaa4a; }
 
         /* ---- weapon readout (bottom-right) ---- */
-        #w_weapon { right: 3%; bottom: 7%; text-align: right; }
-        .visor-weapon-label { display: block; font-size: 14dp; color: #4aaa4a; letter-spacing: 2dp; margin-bottom: 4dp; }
+        #w_weapon { right: 22dp; bottom: 22dp; display: flex; flex-direction: column; align-items: flex-end; gap: 6dp; }
+        .visor-weapon-label { font-size: 14dp; color: #4aaa4a; letter-spacing: 2dp; }
         #w_weapon.shells .visor-weapon-label { color: #aa8844; }
         #w_weapon.nails .visor-weapon-label { color: #8888aa; }
         #w_weapon.rockets .visor-weapon-label { color: #aa5533; }
         #w_weapon.cells .visor-weapon-label { color: #5588aa; }
-        .visor-ammo { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
-        .visor-ammo .sys-label { display: block; }
-        .visor-ammo .stat-value { display: block; }
+        .visor-ammo { display: flex; flex-direction: column; align-items: flex-end; gap: 2dp; }
         .visor-ammo.low { border-color: #8a2a2a; }
         .visor-ammo.low .stat-value { color: #e67878; }
-        .visor-melee { padding: 8dp 12dp; border: 1dp #3a6b3a; background-color: #0a1a0ed8; }
+        .visor-melee { padding: 8dp 12dp; }
         .visor-melee .sys-label { color: #5a8a5a; font-size: 14dp; }
-        .visor-reserves { margin-top: 6dp; }
-        .reserve { display: inline-block; font-family: Space Mono; font-size: 11dp; color: #3a5a3a; margin-left: 10dp; }
+        .visor-reserves { display: flex; gap: 10dp; }
+        .reserve { font-family: Space Mono; font-size: 11dp; color: #3a5a3a; }
         .reserve.active { color: #e6d89a; }
 
         /* ---- kill feed + centerprint ---- */
-        #w_deaths { left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #e67878; }
+        #w_deaths { left: 1%; top: 6%; width: 44%; font-size: 13dp; font-weight: bold; color: #e67878; }
         #w_deaths .dline { display: block; }
         #w_centerprint {
             top: 26%; left: 15%; width: 70%; text-align: center;
@@ -131,49 +121,35 @@
         }
 
         /* ---- health-tier palettes (face_index 0..3; 4 = default green) ---- */
-        .tier-3 .visor-panel, .tier-3 #w_health, .tier-3 #w_armor, .tier-3 .visor-ammo { border-color: #5a6b3a; }
+        .tier-3 .visor-panel, .tier-3 .visor-bracket { border-color: #5a6b3a; }
         .tier-3 .sys-label { color: #7a8a4a; }
         .tier-3 .stat-value { color: #dae6c8; }
-        .tier-3 .visor-bracket { border-color: #5a6b3a; }
-        .tier-2 .visor-panel, .tier-2 #w_health, .tier-2 #w_armor, .tier-2 .visor-ammo { border-color: #8a7a2a; background-color: #1a170ad8; }
+        .tier-2 .visor-panel { border-color: #8a7a2a; background-color: #1a170ad8; }
         .tier-2 .sys-label { color: #aa9a3a; }
         .tier-2 .stat-value { color: #e6d89a; }
         .tier-2 .visor-bracket { border-color: #8a7a2a; }
-        .tier-1 .visor-panel, .tier-1 #w_health, .tier-1 #w_armor, .tier-1 .visor-ammo { border-color: #8a4a2a; background-color: #1a0e0ad8; }
+        .tier-1 .visor-panel { border-color: #8a4a2a; background-color: #1a0e0ad8; }
         .tier-1 .sys-label { color: #aa6a3a; }
         .tier-1 .stat-value { color: #e6a878; }
         .tier-1 .visor-bracket { border-color: #8a4a2a; }
-        .tier-0 .visor-panel, .tier-0 #w_health, .tier-0 #w_armor, .tier-0 .visor-ammo { border-color: #8a2a2a; background-color: #1a0a0ad8; }
+        .tier-0 .visor-panel { border-color: #8a2a2a; background-color: #1a0a0ad8; }
         .tier-0 .sys-label { color: #aa3a3a; }
         .tier-0 .stat-value { color: #e67878; }
         .tier-0 .visor-bracket { border-color: #8a2a2a; }
 
         /* ---- powerup overrides ---- */
+        .has-quad .visor-panel { border-color: #3388ff; background-color: #0a0e1ad8; }
         .has-quad .visor-bracket { border-color: #3388ff; }
-        .has-quad .visor-panel, .has-quad #w_health, .has-quad #w_armor, .has-quad .visor-ammo { border-color: #3388ff; background-color: #0a0e1ad8; }
         .has-quad .sys-label { color: #88bbff; }
         .has-quad .stat-value { color: #c8d8f0; }
+        .has-pent .visor-panel { border-color: #ff4444; background-color: #1a0a0ae0; }
         .has-pent .visor-bracket { border-color: #ff4444; }
-        .has-pent .visor-panel, .has-pent #w_health, .has-pent #w_armor, .has-pent .visor-ammo { border-color: #ff4444; background-color: #1a0a0ae0; }
         .has-pent .sys-label { color: #ff8888; }
         .has-pent .stat-value { color: #ffcccc; }
+        .has-suit .visor-panel { border-color: #44ff44; background-color: #0a1a0ae8; }
         .has-suit .visor-bracket { border-color: #44ff44; }
-        .has-suit .visor-panel, .has-suit #w_health, .has-suit #w_armor, .has-suit .visor-ammo { border-color: #44ff44; background-color: #0a1a0ae8; }
         .has-suit .sys-label { color: #66ff66; }
         .has-suit .stat-value { color: #ccffcc; }
-
-        /* ---- crosshair (plain divs, fixed center, not a widget) ---- */
-        #crosshair-container { position: absolute; top: 50%; left: 50%; width: 1dp; height: 1dp; }
-        .ch-ring { position: absolute; top: -14dp; left: -14dp; width: 28dp; height: 28dp; border: 2dp #4aaa4acc; border-radius: 14dp; }
-        .ch-dot { position: absolute; top: -3dp; left: -3dp; width: 6dp; height: 6dp; background-color: #4aaa4acc; border-radius: 3dp; }
-        .ch-line { position: absolute; background-color: #4aaa4acc; }
-        .ch-line-top    { top: -22dp; left: -1dp; width: 2dp; height: 8dp; }
-        .ch-line-bottom { top: 14dp;  left: -1dp; width: 2dp; height: 8dp; }
-        .ch-line-left   { top: -1dp; left: -22dp; width: 8dp; height: 2dp; }
-        .ch-line-right  { top: -1dp; left: 14dp;  width: 8dp; height: 2dp; }
-        #crosshair-container.weapon-axe .ch-ring { width: 6dp; height: 6dp; top: -3dp; left: -3dp; border-radius: 3dp; }
-        #crosshair-container.weapon-lg  .ch-ring { width: 10dp; height: 10dp; top: -5dp; left: -5dp; }
-        #crosshair-container.weapon-ssg .ch-ring { width: 36dp; height: 36dp; top: -18dp; left: -18dp; }
 
         /* ---- edit mode outline + hint ---- */
         body.edit .widget { border: 1dp #6adc6a90; }
@@ -184,53 +160,36 @@
         }
         .whidden { display: none; }
 
-        /* ---- style picker (dark-green skin) ---- */
-        #stylepicker {
-            position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
-            padding: 12dp; background-color: #0a1a0ef8; border: 2dp #3a6b3a;
-        }
+        /* ---- style picker ---- */
+        #stylepicker { position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp; padding: 12dp; background-color: #0a1a0ef8; border: 2dp #3a6b3a; }
         #stylepicker .ptitle { display: block; text-align: center; font-family: Space Grotesk; font-size: 20dp; font-weight: bold; color: #c8e6c8; margin-bottom: 2dp; text-transform: uppercase; }
         #stylepicker .psub { display: block; text-align: center; font-size: 11dp; color: #5a8a5a; margin-bottom: 8dp; }
         #stylepicker .seclbl { display: block; font-size: 11dp; color: #5a8a5a; margin: 10dp 0 3dp 0; text-transform: uppercase; letter-spacing: 1dp; }
-        #stylepicker .row {
-            display: block; padding: 8dp 10dp; margin: 3dp 0;
-            background-color: #12220fe0; border: 2dp #3a6b3a;
-            font-size: 14dp; font-weight: bold; color: #c8e6c8;
-        }
+        #stylepicker .row { display: block; padding: 8dp 10dp; margin: 3dp 0; background-color: #12220fe0; border: 2dp #3a6b3a; font-size: 14dp; font-weight: bold; color: #c8e6c8; }
         #stylepicker .row:hover { border-color: #4aaa4a; }
         #stylepicker .row.current { background-color: #16281a; color: #8fe0a0; border-color: #4aaa4a; }
         #stylepicker .row.sel { border-color: #6adc6a; background-color: #16281a; color: #ffffff; }
         #stylepicker .scur { display: inline-block; font-size: 11dp; color: #6adc6a; margin-left: 8dp; }
-        #styleclose {
-            display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0;
-            text-align: center; font-size: 13dp; font-weight: bold; color: #c8e6c8;
-            background-color: #1a2f1a;
-        }
+        #styleclose { display: block; margin: 10dp auto 0 auto; width: 110dp; padding: 7dp 0; text-align: center; font-size: 13dp; font-weight: bold; color: #c8e6c8; background-color: #1a2f1a; }
         #styleclose:hover { background-color: #3a6b3a; }
 
         /* ---- edit config panel ---- */
-        #configpanel {
-            position: absolute; top: 16%; left: 2%;
-            width: 220dp; padding: 12dp 14dp;
-            background-color: #0a1a0ef8; border: 1dp #3a6b3a;
-        }
+        #configpanel { position: absolute; top: 16%; left: 2%; width: 220dp; padding: 12dp 14dp; background-color: #0a1a0ef8; border: 1dp #3a6b3a; }
         #configpanel .ctitle { display: block; font-family: Space Grotesk; font-size: 15dp; font-weight: bold; color: #c8e6c8; margin-bottom: 3dp; text-transform: uppercase; }
         #configpanel .chelp { display: block; font-size: 12dp; color: #5a8a5a; margin-bottom: 10dp; }
         #configpanel .crow { display: block; padding: 5dp 6dp; margin: 1dp 0; font-size: 14dp; color: #c8e6c8; }
         #configpanel .crow:hover { background-color: #ffffff10; }
-        #configpanel .cbox {
-            display: inline-block; width: 16dp; height: 16dp; vertical-align: middle;
-            margin-right: 8dp; border: 1dp #3a6b3a; text-align: center; font-size: 13dp; color: #6adc6a;
-        }
+        #configpanel .cbox { display: inline-block; width: 16dp; height: 16dp; vertical-align: middle; margin-right: 8dp; border: 1dp #3a6b3a; text-align: center; font-size: 13dp; color: #6adc6a; }
         #configpanel .crow.on .cbox { background-color: #2a5a2a; }
         #configpanel .crow.off { color: #5a6b5a; }
     </style>
 </head>
 
 <!--
-    Terminal Visor HUD (ported from vkQuake ui_lab) on the "hud" GameDataModel.
-    Content blocks are top-level draggable/resizable widgets; brackets and the
-    crosshair stay fixed. Health-tier / powerup palettes drive off body classes.
+    Terminal Visor HUD (from vkQuake ui_lab) on the "hud" GameDataModel. Content
+    groups are top-level draggable/resizable widgets; brackets stay fixed. No
+    crosshair (ezQuake draws the player's own). Tier/powerup palettes drive off
+    body classes.
 -->
 <body data-model="hud"
       data-class-tier-0="face_index == 0"
@@ -244,7 +203,6 @@
 
     <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste p/ mover · puxe o canto ↘ p/ redimensionar · ESC sai</div>
 
-    <!-- fixed decorative chrome -->
     <div class="visor-bracket bracket-tl"></div>
     <div class="visor-bracket bracket-tr"></div>
     <div class="visor-bracket bracket-bl"></div>
@@ -259,26 +217,26 @@
         <span class="rgrip" data-if="editmode"></span>
     </div>
 
-    <div id="w_powerups" class="widget">
-        <span class="visor-powerup powerup-quad" data-if="quad"><span class="sys-label">SYS::QUAD</span></span>
-        <span class="visor-powerup powerup-pent" data-if="pent"><span class="sys-label">SYS::PENT</span></span>
-        <span class="visor-powerup powerup-ring" data-if="ring"><span class="sys-label">SYS::RING</span></span>
-        <span class="visor-powerup powerup-suit" data-if="suit"><span class="sys-label">SYS::SUIT</span></span>
-        <span class="rgrip" data-if="editmode"></span>
-    </div>
-
-    <div id="w_notify" class="widget">
-        <span class="sys-label notify-header">SYS::MSG</span>
-        <div class="nline" data-for="line : notify_lines">{{ line }}</div>
-        <span class="rgrip" data-if="editmode"></span>
-    </div>
-
-    <div id="w_sigils" class="widget" data-if="sigil1 || sigil2 || sigil3 || sigil4">
-        <span class="sys-label">SIGIL</span>
-        <span class="sigil-slot" data-class-owned="sigil1">E1</span>
-        <span class="sigil-slot" data-class-owned="sigil2">E2</span>
-        <span class="sigil-slot" data-class-owned="sigil3">E3</span>
-        <span class="sigil-slot" data-class-owned="sigil4">E4</span>
+    <div id="w_leftcol" class="widget">
+        <div class="visor-powerups">
+            <div class="visor-powerup powerup-quad" data-if="quad"><span class="sys-label">SYS::QUAD</span></div>
+            <div class="visor-powerup powerup-pent" data-if="pent"><span class="sys-label">SYS::PENT</span></div>
+            <div class="visor-powerup powerup-ring" data-if="ring"><span class="sys-label">SYS::RING</span></div>
+            <div class="visor-powerup powerup-suit" data-if="suit"><span class="sys-label">SYS::SUIT</span></div>
+        </div>
+        <div class="visor-notify">
+            <span class="sys-label notify-header">SYS::MSG</span>
+            <div class="nline" data-for="line : notify_lines">{{ line }}</div>
+        </div>
+        <div class="visor-sigils" data-if="sigil1 || sigil2 || sigil3 || sigil4">
+            <span class="sys-label">SIGIL</span>
+            <div class="sigil-slots">
+                <div class="sigil-slot" data-class-owned="sigil1">E1</div>
+                <div class="sigil-slot" data-class-owned="sigil2">E2</div>
+                <div class="sigil-slot" data-class-owned="sigil3">E3</div>
+                <div class="sigil-slot" data-class-owned="sigil4">E4</div>
+            </div>
+        </div>
         <span class="rgrip" data-if="editmode"></span>
     </div>
 
@@ -288,23 +246,23 @@
         <span class="rgrip" data-if="editmode"></span>
     </div>
 
-    <div id="w_health" class="widget visor-panel" data-class-critical="health &lt; 25">
-        <span class="sys-label">HP</span>
-        <span class="stat-value stat-health">{{ health }}</span>
-        <div class="critical-tag" data-if="health &lt; 25"><span class="sys-label">CRITICAL</span></div>
+    <div id="w_vitals" class="widget">
+        <div class="visor-panel visor-health" data-class-critical="health &lt; 25">
+            <span class="sys-label">HP</span>
+            <span class="stat-value stat-health">{{ health }}</span>
+            <div class="critical-tag" data-if="health &lt; 25"><span class="sys-label">CRITICAL</span></div>
+        </div>
+        <div class="visor-panel visor-armor" data-if="armor > 0"
+             data-class-armor-green="armor_type == 1"
+             data-class-armor-yellow="armor_type == 2"
+             data-class-armor-red="armor_type == 3">
+            <span class="sys-label">ARM</span>
+            <span class="stat-value stat-armor">{{ armor }}</span>
+        </div>
         <span class="rgrip" data-if="editmode"></span>
     </div>
 
-    <div id="w_armor" class="widget visor-panel" data-if="armor > 0"
-         data-class-armor-green="armor_type == 1"
-         data-class-armor-yellow="armor_type == 2"
-         data-class-armor-red="armor_type == 3">
-        <span class="sys-label">ARM</span>
-        <span class="stat-value stat-armor">{{ armor }}</span>
-        <span class="rgrip" data-if="editmode"></span>
-    </div>
-
-    <div id="w_scores" class="widget visor-panel">
+    <div id="w_scores" class="widget">
         <span class="sys-label">DM::SCORES</span>
         <div class="dm-player-row" data-for="p : players">
             <span class="dm-name">{{ p.name }}</span>
@@ -319,11 +277,11 @@
          data-class-rockets="is_rockets_weapon"
          data-class-cells="is_cells_weapon">
         <span class="visor-weapon-label">WPN::{{ weapon_label }}</span>
-        <div class="visor-ammo" data-if="!is_axe" data-class-low="ammo &lt; 10">
+        <div class="visor-panel visor-ammo" data-if="!is_axe" data-class-low="ammo &lt; 10">
             <span class="sys-label">AMMO</span>
             <span class="stat-value stat-ammo">{{ ammo }}</span>
         </div>
-        <div class="visor-melee" data-if="is_axe"><span class="sys-label">MELEE</span></div>
+        <div class="visor-panel visor-melee" data-if="is_axe"><span class="sys-label">MELEE</span></div>
         <div class="visor-reserves" data-if="!is_axe">
             <span class="reserve" data-class-active="is_shells_weapon">S {{ shells }}</span>
             <span class="reserve" data-class-active="is_nails_weapon">N {{ nails }}</span>
@@ -339,24 +297,6 @@
     </div>
 
     <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
-
-    <!-- Crosshair stays at true viewport center (not a draggable widget). -->
-    <div id="crosshair-container"
-         data-class-weapon-axe="is_axe"
-         data-class-weapon-sg="weapon_num == 2"
-         data-class-weapon-ssg="weapon_num == 3"
-         data-class-weapon-ng="weapon_num == 4"
-         data-class-weapon-sng="weapon_num == 5"
-         data-class-weapon-gl="weapon_num == 6"
-         data-class-weapon-rl="weapon_num == 7"
-         data-class-weapon-lg="weapon_num == 8">
-        <div class="ch-ring"></div>
-        <div class="ch-dot"></div>
-        <div class="ch-line ch-line-top"></div>
-        <div class="ch-line ch-line-bottom"></div>
-        <div class="ch-line ch-line-left"></div>
-        <div class="ch-line ch-line-right"></div>
-    </div>
 
     <!-- edit-mode config panel: show/hide each widget -->
     <div id="configpanel" data-if="editmode">

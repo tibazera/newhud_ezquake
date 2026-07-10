@@ -457,18 +457,23 @@ void LoadLayout()
 
 /* ---------------- editor: dragging ---------------- */
 
-/* The draggable unit is a direct child of the document body. */
+/* The draggable unit is the element itself or its nearest ancestor whose id
+ * starts with "w_". Resolving to a w_ id (instead of the direct body child)
+ * lets a widget sit inside a wrapper and still be grabbed, and is a strict
+ * superset of the old behaviour for the layouts whose widgets are direct
+ * children of the body. */
 Rml::Element* TopLevelFor(Rml::Element* element)
 {
-	if (!element || !g_hud.document) {
+	if (!g_hud.document) {
 		return nullptr;
 	}
-	Rml::Element* body = g_hud.document;
-	Rml::Element* walk = element;
-	while (walk && walk->GetParentNode() != body) {
-		walk = walk->GetParentNode();
+	for (Rml::Element* walk = element; walk && walk != g_hud.document;
+	     walk = walk->GetParentNode()) {
+		if (IsWidgetId(walk->GetId())) {
+			return walk;
+		}
 	}
-	return (walk && walk != body) ? walk : nullptr;
+	return nullptr;
 }
 
 void EditorStartDrag(float mx, float my)
