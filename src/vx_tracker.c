@@ -32,6 +32,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "fonts.h"
 #include "hud.h"
 #include "r_texture.h"
+#ifdef USE_RMLUI
+#include "rmlui/hud_rmlui.h" // HUD_RmlUi_ShouldDrawClassicHud (own kill feed widget)
+#endif
 
 #define MAX_IMAGENAME 32
 
@@ -256,7 +259,15 @@ void VX_TrackerThink(void)
 {
 	int i;
 
-	if (r_tracker.integer) {
+	if (r_tracker.integer
+#ifdef USE_RMLUI
+		/* When our RmlUi HUD owns the screen it draws its own (draggable)
+		 * kill feed widget from the same tracker data, so suppress the
+		 * classic drawing to avoid a duplicate. Storage/expiry below still
+		 * runs, so the widget keeps getting fed. */
+		&& HUD_RmlUi_ShouldDrawClassicHud()
+#endif
+		) {
 		VXSCR_DrawTrackerString(amf_tracker_x.value, vid.height * 0.2 / bound(0.1, amf_tracker_scale.value, 10) + amf_tracker_y.value, vid.width, amf_tracker_name_width.integer, amf_tracker_proportional.integer, amf_tracker_scale.value, amf_tracker_images_scale.value, amf_tracker_align_right.integer);
 	}
 
@@ -289,6 +300,38 @@ void VX_TrackerThink(void)
 			continue;
 		}
 	}
+}
+
+/* Kill feed export for the RmlUi HUD. Writes the text of the currently active
+ * tracker message in slot `index` (0..MAX_TRACKERMESSAGES) into `buf`; image
+ * (weapon) segments become a " >> " marker so "killer >> victim" reads clearly.
+ * Returns true when the slot holds a live message. */
+qbool VX_TrackerExportLine(int index, char* buf, int bufsize)
+{
+	trackmsg_t* msg;
+	int s;
+
+	if (index < 0 || index >= MAX_TRACKERMESSAGES || !buf || bufsize <= 0) {
+		return false;
+	}
+	msg = &trackermsg[index];
+	if (msg->die < r_refdef2.time) {
+		return false; // expired / empty slot
+	}
+
+	buf[0] = '\0';
+	for (s = 0; s < msg->segments; s++) {
+		if (msg->text[s][0]) {
+			if (buf[0]) {
+				strlcat(buf, " ", bufsize);
+			}
+			strlcat(buf, msg->text[s], bufsize);
+		}
+		else if (msg->images[s]) {
+			strlcat(buf, buf[0] ? " >> " : ">> ", bufsize);
+		}
+	}
+	return buf[0] != '\0';
 }
 
 static qbool VX_TrackerStringPrint(const char* text)

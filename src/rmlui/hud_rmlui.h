@@ -23,6 +23,7 @@ extern "C" {
 
 extern cvar_t hud_newhudeditor;
 extern cvar_t hud_newhudeditor_iconset;
+extern cvar_t hud_newhudeditor_doc;
 
 void HUD_RmlUi_Init(void);
 void HUD_RmlUi_Shutdown(void);

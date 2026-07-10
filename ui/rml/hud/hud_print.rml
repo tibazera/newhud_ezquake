@@ -1,6 +1,6 @@
 <rml>
 <head>
-    <title>HUD</title>
+    <title>HUD Competitivo</title>
     <style>
         body {
             font-family: LatoLatin;
@@ -9,38 +9,49 @@
             height: 100%;
         }
         .widget { position: absolute; }
-        .center { left: 50%; transform: translateX(-50%); }
 
-        /* ---- classic sbar pieces (dp = resolution independent) ---- */
-        img.icon { width: 40dp; height: 40dp; vertical-align: bottom; }
-        .digslot { display: inline-block; width: 26dp; height: 40dp; vertical-align: bottom; }
-        .digslot img { width: 26dp; height: 40dp; }
+        /* ================= big bottom numbers (competitive/print) =================
+           Each stat is a separate draggable widget. Defaults form the classic
+           centered cluster: armor | +health | ammo, weapon icon above. */
 
-        #w_face   { left: 50%; margin-left: -34dp; bottom: 3%; }
-        #w_health { left: 50%; margin-left: 8dp;   bottom: 3%; }
-        #w_armor  { left: 50%; margin-left: -160dp; bottom: 3%; }
-        #w_ammo   { left: 50%; margin-left: 96dp;  bottom: 3%; }
+        .bignum { font-size: 46dp; font-weight: bold; }
 
-        /* ---- weapon strip (centered via full-width + text-align) ---- */
-        #w_weapons { left: 0; right: 0; bottom: 15%; text-align: center; }
-        .wslot { display: inline-block; padding: 1dp; background-color: #00000040; }
-        .wslot img { width: 40dp; height: 26dp; image-color: #ffffff60; }
-        .wslot.owned img { image-color: #ffffffff; }
-        .wslot.owned { background-color: #00000098; }
-        .wslot.active { background-color: #30609078; }
+        /* --- armor: colored by armor type (green/yellow/red) --- */
+        #w_armor { left: 38%; bottom: 3%; }
+        #w_armor .bignum { color: #d05050; }                 /* default / RA */
+        #w_armor.ga .bignum { color: #46c850; }              /* green armor */
+        #w_armor.ya .bignum { color: #e0c040; }              /* yellow armor */
+        #w_armor.ra .bignum { color: #e05050; }              /* red armor */
 
-        /* ---- per-type ammo counts ---- */
+        /* --- health: green "+" and value colored by amount --- */
+        #w_health { left: 50%; margin-left: -40dp; bottom: 3%; }
+        #w_health .plus { color: #46c850; font-size: 46dp; font-weight: bold; }
+        #w_health .bignum { color: #ffffff; }
+        #w_health.mega .bignum { color: #46c850; }           /* > 100 (mega) */
+        #w_health.low .bignum { color: #e05050; }            /* <= 25 */
+
+        /* --- ammo: type icon + value --- */
+        #w_ammo { left: 62%; bottom: 3%; }
+        #w_ammo img { width: 30dp; height: 30dp; vertical-align: middle; margin-right: 6dp; }
+        #w_ammo .bignum { color: #ffffff; vertical-align: middle; }
+
+        /* --- active weapon icon (above the cluster) --- */
+        #w_curweapon { left: 50%; margin-left: -24dp; bottom: 14%; }
+        #w_curweapon img { width: 48dp; height: 32dp; }
+
+        /* --- per-type ammo counts grid (2x2) --- */
         #w_ammocounts {
-            right: 2%; bottom: 15%; padding: 4dp 8dp;
-            background-color: #00000090; border-radius: 4dp;
-            font-size: 15dp; text-align: right; color: #e8d060;
+            right: 30%; bottom: 4%; padding: 4dp 8dp;
+            background-color: #00000070; border-radius: 4dp;
+            font-size: 15dp; color: #d8c060;
         }
         #w_ammocounts .arow { display: block; }
-        #w_ammocounts img { width: 18dp; height: 18dp; vertical-align: middle; margin-right: 5dp; }
+        #w_ammocounts .acell { display: inline-block; width: 58dp; }
+        #w_ammocounts img { width: 16dp; height: 16dp; vertical-align: middle; margin-right: 4dp; }
         #w_ammocounts span { vertical-align: middle; }
 
-        /* ---- items ---- */
-        #w_items { right: 2%; bottom: 27%; }
+        /* --- items / powerups --- */
+        #w_items { right: 2%; bottom: 30%; }
         #w_items img { width: 28dp; height: 28dp; margin: 1dp; }
 
         /* ---- corners ---- */
@@ -50,12 +61,23 @@
             right: 2%; top: 2%; padding: 3dp 10dp; text-align: right;
             background-color: #00000070; border-radius: 4dp;
         }
-        #w_clock .clock { font-size: 24dp; font-weight: bold; }
+        #w_clock .clock { font-size: 22dp; font-weight: bold; }
         #w_fps {
-            right: 2%; top: 11%; padding: 3dp 10dp; text-align: right;
-            background-color: #00000070; border-radius: 4dp; font-size: 14dp; color: #b0b0b0;
+            right: 2%; top: 10%; padding: 3dp 10dp; text-align: right;
+            background-color: #00000070; border-radius: 4dp; font-size: 13dp; color: #b0b0b0;
         }
-        #w_fps .net { display: block; }
+
+        /* --- face (optional in this layout) --- */
+        #w_face { left: 50%; margin-left: -80dp; bottom: 3%; }
+        #w_face img { width: 40dp; height: 40dp; }
+
+        /* --- full weapon strip (centered) --- */
+        #w_weapons { left: 0; right: 0; bottom: 22%; text-align: center; }
+        #w_weapons .wslot { display: inline-block; padding: 1dp; background-color: #00000040; }
+        #w_weapons .wslot img { width: 40dp; height: 26dp; image-color: #ffffff60; }
+        #w_weapons .wslot.owned img { image-color: #ffffffff; }
+        #w_weapons .wslot.owned { background-color: #00000098; }
+        #w_weapons .wslot.active { background-color: #30609078; }
 
         /* ---- kill feed (deaths) ---- */
         #w_deaths { left: 1%; top: 2%; width: 44%; font-size: 13dp; font-weight: bold; color: #ff7060; }
@@ -65,13 +87,11 @@
         #w_notify { left: 1%; top: 22%; width: 46%; font-size: 14dp; color: #e8e8e8; }
         #w_notify .nline { display: block; }
         #w_centerprint {
-            top: 26%; left: 15%; width: 70%; text-align: center;
-            font-size: 22dp; font-weight: bold; color: #ffe8a0; white-space: pre-line;
+            top: 30%; left: 15%; width: 70%; text-align: center;
+            font-size: 24dp; font-weight: bold; color: #ffffff; white-space: pre-line;
         }
 
-        /* ---- style picker: centered via left:50% + negative margin-left
-           (the same technique the HUD sbar uses and that renders correctly
-           here). Fixed dp width, everything stacked, no %/auto/right/bottom. */
+        /* ---- style picker: centered via left:50% + negative margin-left ---- */
         #stylepicker {
             position: absolute; top: 34dp; left: 50%; width: 280dp; margin-left: -140dp;
             padding: 12dp; background-color: #0b1015f2;
@@ -96,7 +116,7 @@
         }
         #styleclose:hover { background-color: #4a6078; }
 
-        /* ---- config panel (edit mode) — shown via data-if="editmode" ---- */
+        /* ---- config panel (edit mode) ---- */
         #configpanel {
             position: absolute; top: 16%; left: 2%;
             width: 210dp; padding: 12dp 14dp;
@@ -117,7 +137,7 @@
         #configpanel .crow.on .cbox { background-color: #2a5a2a; }
         #configpanel .crow.off { color: #6a7280; }
 
-        /* ---- edit mode — hint shown via data-if="editmode" ---- */
+        /* ---- edit mode ---- */
         #edithint {
             position: absolute; top: 0; left: 0; right: 0;
             padding: 6dp 16dp; text-align: center; font-size: 15dp; font-weight: bold;
@@ -129,18 +149,14 @@
 </head>
 
 <!--
-    Authored in the engine 2D space (conwidth/conheight): positions in %,
-    sizes in dp (dp-ratio = conheight/480), so the HUD and the mouse cursor
-    share coordinates and it stays consistent across any vid_conwidth.
-    Each element is a top-level draggable widget (id "w_*").
+    "Competitivo" layout — big colored numbers, modelled on the classic KTX
+    QuakeWorld HUD. Kill feed / team overlay / team scores / scoreboard come
+    from the engine's classic drawing (player cfg driven). Each number is a
+    separate draggable widget (id "w_*"), authored in conwidth/conheight space.
 -->
 <body data-model="hud">
 
     <div id="edithint" data-if="editmode">MODO EDIÇÃO — arraste cada elemento · ESC para sair</div>
-
-    <div id="w_deaths" class="widget">
-        <div class="dline" data-for="d : deaths">{{ d }}</div>
-    </div>
 
     <div id="w_notify" class="widget">
         <div class="nline" data-for="line : notify_lines">{{ line }}</div>
@@ -151,11 +167,20 @@
     </div>
 
     <div id="w_fps" class="widget">
-        <span class="net">{{ fps }} fps &nbsp; {{ ping }} ms</span>
-        <span class="net" data-if="spectator">SPEC</span>
-        <span class="net" data-if="demo_playback">DEMO</span>
+        <span>{{ fps }} fps</span>
     </div>
 
+    <!-- kill feed (deaths) -->
+    <div id="w_deaths" class="widget">
+        <div class="dline" data-for="d : deaths">{{ d }}</div>
+    </div>
+
+    <!-- face -->
+    <div id="w_face" class="widget">
+        <img data-attr-src="iconpath + face_icon"/>
+    </div>
+
+    <!-- full weapon strip (highlights the active one) -->
     <div id="w_weapons" class="widget">
         <span class="wslot" data-class-owned="has_shotgun" data-class-active="weapon_num == 2"><img data-attr-src="iconpath + (weapon_num == 2 ? 'inv2_shotgun' : 'inv_shotgun')"/></span>
         <span class="wslot" data-class-owned="has_super_shotgun" data-class-active="weapon_num == 3"><img data-attr-src="iconpath + (weapon_num == 3 ? 'inv2_sshotgun' : 'inv_sshotgun')"/></span>
@@ -166,39 +191,39 @@
         <span class="wslot" data-class-owned="has_lightning" data-class-active="weapon_num == 8"><img data-attr-src="iconpath + (weapon_num == 8 ? 'inv2_lightng' : 'inv_lightng')"/></span>
     </div>
 
-    <div id="w_armor" class="widget" data-if="armor > 0">
-        <img class="icon" data-if="armor_type == 1" data-attr-src="iconpath + 'sb_armor1'"/>
-        <img class="icon" data-if="armor_type == 2" data-attr-src="iconpath + 'sb_armor2'"/>
-        <img class="icon" data-if="armor_type == 3" data-attr-src="iconpath + 'sb_armor3'"/>
-        <span class="digslot"><img data-if="armor_d100 != ''" data-attr-src="iconpath + armor_d100"/></span>
-        <span class="digslot"><img data-if="armor_d10 != ''" data-attr-src="iconpath + armor_d10"/></span>
-        <span class="digslot"><img data-if="armor_d1 != ''" data-attr-src="iconpath + armor_d1"/></span>
+    <!-- armor: colored by type -->
+    <div id="w_armor" class="widget"
+         data-class-ga="armor_type == 1"
+         data-class-ya="armor_type == 2"
+         data-class-ra="armor_type == 3">
+        <span class="bignum">{{ armor }}</span>
     </div>
 
-    <div id="w_face" class="widget">
-        <img class="icon" data-attr-src="iconpath + face_icon"/>
+    <!-- health: green plus + colored value -->
+    <div id="w_health" class="widget"
+         data-class-mega="health &gt; 100"
+         data-class-low="health &lt;= 25">
+        <span class="plus">+</span><span class="bignum">{{ health }}</span>
     </div>
 
-    <div id="w_health" class="widget">
-        <span class="digslot"><img data-if="health_d100 != ''" data-attr-src="iconpath + health_d100"/></span>
-        <span class="digslot"><img data-if="health_d10 != ''" data-attr-src="iconpath + health_d10"/></span>
-        <span class="digslot"><img data-if="health_d1 != ''" data-attr-src="iconpath + health_d1"/></span>
-    </div>
-
+    <!-- ammo for the active weapon: icon + value -->
     <div id="w_ammo" class="widget" data-if="weapon_num &gt; 1">
-        <img class="icon" data-attr-src="iconpath + ammo_icon"/>
-        <span class="digslot"><img data-if="ammo_d100 != ''" data-attr-src="iconpath + ammo_d100"/></span>
-        <span class="digslot"><img data-if="ammo_d10 != ''" data-attr-src="iconpath + ammo_d10"/></span>
-        <span class="digslot"><img data-if="ammo_d1 != ''" data-attr-src="iconpath + ammo_d1"/></span>
+        <img data-attr-src="iconpath + ammo_icon"/><span class="bignum">{{ ammo }}</span>
     </div>
 
+    <!-- per-type ammo counts (2x2 grid) -->
     <div id="w_ammocounts" class="widget">
-        <span class="arow"><img data-attr-src="iconpath + 'sb_shells'"/><span>{{ shells }}</span></span>
-        <span class="arow"><img data-attr-src="iconpath + 'sb_nails'"/><span>{{ nails }}</span></span>
-        <span class="arow"><img data-attr-src="iconpath + 'sb_rocket'"/><span>{{ rockets }}</span></span>
-        <span class="arow"><img data-attr-src="iconpath + 'sb_cells'"/><span>{{ cells }}</span></span>
+        <span class="arow">
+            <span class="acell"><img data-attr-src="iconpath + 'sb_shells'"/><span>{{ shells }}</span></span>
+            <span class="acell"><img data-attr-src="iconpath + 'sb_nails'"/><span>{{ nails }}</span></span>
+        </span>
+        <span class="arow">
+            <span class="acell"><img data-attr-src="iconpath + 'sb_rocket'"/><span>{{ rockets }}</span></span>
+            <span class="acell"><img data-attr-src="iconpath + 'sb_cells'"/><span>{{ cells }}</span></span>
+        </span>
     </div>
 
+    <!-- items / powerups -->
     <div id="w_items" class="widget">
         <img data-if="quad" data-attr-src="iconpath + 'sb_quad'"/>
         <img data-if="pent" data-attr-src="iconpath + 'sb_invuln'"/>
@@ -206,10 +231,6 @@
         <img data-if="suit" data-attr-src="iconpath + 'sb_suit'"/>
         <img data-if="key1" data-attr-src="iconpath + 'sb_key1'"/>
         <img data-if="key2" data-attr-src="iconpath + 'sb_key2'"/>
-        <img data-if="sigil1" data-attr-src="iconpath + 'sb_sigil1'"/>
-        <img data-if="sigil2" data-attr-src="iconpath + 'sb_sigil2'"/>
-        <img data-if="sigil3" data-attr-src="iconpath + 'sb_sigil3'"/>
-        <img data-if="sigil4" data-attr-src="iconpath + 'sb_sigil4'"/>
     </div>
 
     <div id="w_frags" class="widget">{{ frags }}</div>
@@ -217,10 +238,7 @@
 
     <div id="w_centerprint" class="widget" data-if="centerprint_visible">{{ centerprint }}</div>
 
-    <!-- Scoreboard (TAB) / team overlay / kill feed use the classic ezQuake
-         drawing (kept via the cl_screen.c gate). -->
-
-    <!-- edit-mode config panel: show/hide each element -->
+    <!-- edit-mode config panel -->
     <div id="configpanel" data-if="editmode">
         <span class="ctitle">Elementos do HUD</span>
         <span class="chelp">clique para mostrar/ocultar · arraste cada um na tela</span>
@@ -232,7 +250,7 @@
         </div>
     </div>
 
-    <!-- visual iconset picker: arrows navigate (live preview), Enter applies -->
+    <!-- picker: layout presets on top, then iconsets -->
     <div id="stylepicker" data-if="stylepicker">
         <span class="ptitle">Estilo do HUD</span>
         <span class="psub">Setas navegam ícones · Enter aplica · ESC fecha</span>

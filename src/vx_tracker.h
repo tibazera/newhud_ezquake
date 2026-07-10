@@ -42,6 +42,7 @@ char* GetColoredWeaponName(int num, const byte *color);
 const char* GetWeaponImageName(int num);
 const char* GetWeaponTextName(int num);
 void VX_TrackerThink(void);
+qbool VX_TrackerExportLine(int index, char* buf, int bufsize);
 void VX_TrackerInit(void);
 void VX_TrackerClear(void);
 void VX_TrackerStreak(int player, int count);

@@ -24,6 +24,7 @@
 extern "C" {
 #include "quakedef.h"
 #include "console.h"
+#include "vx_tracker.h" // VX_TrackerExportLine (kill feed source)
 
 /* Helpers defined in C translation units. */
 int HUD_Stats(int stat_num);
@@ -158,12 +159,17 @@ struct HudModel {
 	// presentation
 	Rml::String iconpath;      // icon lookup prefix (hud_newhudeditor_iconset)
 	bool stylepicker = false;  // visual iconset picker overlay
+	Rml::String picker_sel;    // keyboard-highlighted iconset path in the picker
+	bool editmode = false;     // drag/edit mode active (drives the edit panels)
+	Rml::String layoutpath;    // current HUD document (hud_newhudeditor_doc) for highlight
+	Rml::Vector<IconsetRow> layouts; // selectable HUD layout presets (documents)
 	Rml::Vector<IconsetRow> iconsets;
 	Rml::Vector<WidgetRow> widgets; // edit-mode show/hide list
 	// events
 	Rml::String centerprint;   // current centerprint text ('\n' separated)
 	bool centerprint_visible = false;
 	Rml::Vector<Rml::String> notify_lines;
+	Rml::Vector<Rml::String> deaths; // kill feed (from the classic tracker)
 	// scoreboard
 	bool showscores = false;
 	bool showteamscores = false;
@@ -197,7 +203,8 @@ const WidgetDef WIDGET_DEFS[] = {
 	{"w_speed",      "Velocidade"},
 	{"w_clock",      "Relógio"},
 	{"w_fps",        "FPS / Ping"},
-	{"w_notify",     "Mensagens (mortes / chat)"},
+	{"w_deaths",     "Mortes (kill feed)"},
+	{"w_notify",     "Mensagens / chat"},
 	{"w_centerprint","Avisos centrais"},
 };
 const int WIDGET_COUNT = (int)(sizeof(WIDGET_DEFS) / sizeof(WIDGET_DEFS[0]));
@@ -466,6 +473,18 @@ void ReadEngineState(HudModel& m)
 		}
 	}
 
+	// -- kill feed: active tracker messages (the classic r_tracker data),
+	// exposed as a draggable HUD widget (w_deaths). --
+	{
+		m.deaths.clear();
+		char kbuf[256];
+		for (int i = 0; i < 30 && (int)m.deaths.size() < 8; ++i) {
+			if (VX_TrackerExportLine(i, kbuf, sizeof(kbuf))) {
+				m.deaths.push_back(kbuf);
+			}
+		}
+	}
+
 	// -- scoreboard toggles (+showscores / +showteamscores) --
 	m.showscores = sb_showscores != 0;
 	m.showteamscores = sb_showteamscores != 0;
@@ -477,6 +496,7 @@ void ReadEngineState(HudModel& m)
 	else {
 		m.iconpath = hud_newhudeditor_iconset.string ? hud_newhudeditor_iconset.string : "";
 	}
+	m.layoutpath = hud_newhudeditor_doc.string ? hud_newhudeditor_doc.string : "";
 
 	// -- scoreboard: players sorted by frags (spectators last) --
 	m.players.clear();
@@ -644,6 +664,10 @@ bool GameDataCreate(Rml::Context* context)
 	// presentation
 	constructor.Bind("iconpath", &data.iconpath);
 	constructor.Bind("stylepicker", &data.stylepicker);
+	constructor.Bind("picker_sel", &data.picker_sel);
+	constructor.Bind("editmode", &data.editmode);
+	constructor.Bind("layoutpath", &data.layoutpath);
+	constructor.Bind("layouts", &data.layouts);
 	constructor.Bind("iconsets", &data.iconsets);
 	constructor.Bind("widgets", &data.widgets);
 	// events
@@ -651,12 +675,18 @@ bool GameDataCreate(Rml::Context* context)
 	constructor.Bind("centerprint", &data.centerprint);
 	constructor.Bind("centerprint_visible", &data.centerprint_visible);
 	constructor.Bind("notify_lines", &data.notify_lines);
+	constructor.Bind("deaths", &data.deaths);
 	// scoreboard
 	constructor.Bind("showscores", &data.showscores);
 	constructor.Bind("showteamscores", &data.showteamscores);
 	constructor.Bind("players", &data.players);
 
 	RebuildWidgetRows();
+
+	/* Selectable HUD layout presets (documents). name + document path. */
+	data.layouts.clear();
+	data.layouts.push_back({"Clássico",    "ui/rml/hud/hud.rml"});
+	data.layouts.push_back({"Competitivo", "ui/rml/hud/hud_print.rml"});
 
 	model_handle = constructor.GetModelHandle();
 	model_ready = true;
@@ -740,10 +770,15 @@ void GameDataSync()
 	DirtyIfChanged("demo_playback", data.demo_playback, prev.demo_playback);
 	DirtyIfChanged("mvd", data.mvd, prev.mvd);
 	DirtyIfChanged("iconpath", data.iconpath, prev.iconpath);
+	DirtyIfChanged("layoutpath", data.layoutpath, prev.layoutpath);
 	DirtyIfChanged("centerprint", data.centerprint, prev.centerprint);
 	DirtyIfChanged("centerprint_visible", data.centerprint_visible, prev.centerprint_visible);
 	DirtyIfChanged("showscores", data.showscores, prev.showscores);
 	DirtyIfChanged("showteamscores", data.showteamscores, prev.showteamscores);
+
+	if (data.deaths != prev.deaths) {
+		model_handle.DirtyVariable("deaths");
+	}
 
 	if (data.notify_lines != prev.notify_lines) {
 		model_handle.DirtyVariable("notify_lines");
@@ -809,10 +844,61 @@ void GameDataOpenStylePicker()
 		}
 	}
 
+	/* Start the keyboard highlight on the set currently in use so the first
+	 * arrow press moves from where the player already is. */
+	data.picker_sel = hud_newhudeditor_iconset.string ? hud_newhudeditor_iconset.string : "";
+	bool sel_found = false;
+	for (const IconsetRow& row : data.iconsets) {
+		if (row.path == data.picker_sel) { sel_found = true; break; }
+	}
+	if (!sel_found && !data.iconsets.empty()) {
+		data.picker_sel = data.iconsets[0].path;
+	}
+
 	data.stylepicker = true;
 	if (model_ready) {
 		model_handle.DirtyVariable("iconsets");
 		model_handle.DirtyVariable("stylepicker");
+		model_handle.DirtyVariable("picker_sel");
+	}
+}
+
+/* Move the keyboard highlight to the previous/next installed set and live-
+ * preview it, so the whole HUD updates as the player scrolls the list. */
+void GameDataPickerMove(int dir)
+{
+	if (data.iconsets.empty()) {
+		return;
+	}
+	int cur = -1;
+	for (int i = 0; i < (int)data.iconsets.size(); ++i) {
+		if (data.iconsets[i].path == data.picker_sel) { cur = i; break; }
+	}
+	int n = (int)data.iconsets.size();
+	int next = (cur < 0) ? 0 : ((cur + dir % n + n) % n);
+	data.picker_sel = data.iconsets[next].path;
+	GameDataPreviewIconset(data.picker_sel.c_str());
+	if (model_ready) {
+		model_handle.DirtyVariable("picker_sel");
+	}
+}
+
+/* Commit the highlighted set to the cvar (persists via cfg_save) and drop the
+ * temporary preview so the applied value takes over. */
+void GameDataPickerApplySelected()
+{
+	if (data.picker_sel.empty()) {
+		return;
+	}
+	Cvar_Set(&hud_newhudeditor_iconset, (char*)data.picker_sel.c_str());
+	GameDataEndPreviewIconset();
+}
+
+void GameDataSetEditMode(bool on)
+{
+	data.editmode = on;
+	if (model_ready) {
+		model_handle.DirtyVariable("editmode");
 	}
 }
 

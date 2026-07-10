@@ -76,7 +76,13 @@ struct EditorState {
 };
 EditorState g_editor;
 
+/* Layout-preset switch requested from the picker; applied at the start of the
+ * next Frame() so the current document is not unloaded mid event-dispatch. */
+Rml::String g_pending_doc;
+
 void StylePickerClose();      // defined below
+void LoadHudDocument();       // defined below
+void StylePickerOpen();       // defined below
 void SaveLayout();            // defined below
 void ApplyWidgetVisibility(); // defined below
 
@@ -95,6 +101,16 @@ public:
 			for (Rml::Element* el = target; el; el = el->GetParentNode()) {
 				if (el->GetId() == "styleclose") {
 					StylePickerClose();
+					return;
+				}
+				/* Layout preset row: switch the HUD document. Deferred to
+				 * the next frame so we never unload this document while its
+				 * own click event is still being dispatched. */
+				if (el->HasAttribute("setdoc")) {
+					const Rml::String doc = el->GetAttribute<Rml::String>("setdoc", "");
+					if (!doc.empty()) {
+						g_pending_doc = doc;
+					}
 					return;
 				}
 			}
@@ -224,7 +240,25 @@ void LoadHudDocument()
 
 /* ---------------- editor: layout persistence ---------------- */
 
-const char* LAYOUT_FILE = "rmlui_hud_layout.cfg";
+/* Layout is saved PER DOCUMENT so the Classic and Competitive layouts keep
+ * independent element positions (they share widget ids but want different
+ * placements). Derived from the document basename, e.g.
+ * "ui/rml/hud/hud_print.rml" -> "rmlui_layout_hud_print.cfg". */
+const char* LayoutFile()
+{
+	static char name[MAX_OSPATH];
+	const char* doc = hud_newhudeditor_doc.string ? hud_newhudeditor_doc.string : "hud";
+	const char* slash = strrchr(doc, '/');
+	const char* base = slash ? slash + 1 : doc;
+	char stem[64];
+	size_t i = 0;
+	for (; base[i] && base[i] != '.' && i + 1 < sizeof(stem); ++i) {
+		stem[i] = base[i];
+	}
+	stem[i] = '\0';
+	snprintf(name, sizeof(name), "rmlui_layout_%s.cfg", stem[0] ? stem : "hud");
+	return name;
+}
 
 /* Pin an element to absolute pixel coordinates, neutralising the anchors
  * the stylesheet may use (centering margins, right/bottom anchoring). */
@@ -280,8 +314,20 @@ void SaveLayout()
 			continue;
 		}
 		const Rml::Vector2f pos = child->GetAbsoluteOffset(Rml::BoxArea::Border);
+		/* GetAbsoluteOffset returns density-independent px (dp); the context is
+		 * sized in physical px. Convert dp -> physical px (dp * dp_ratio, the
+		 * same ratio fed to SetDensityIndependentPixelRatio) BEFORE taking the
+		 * fraction, otherwise the fraction is inflated by 1/dp_ratio and can
+		 * exceed 1, pinning widgets off-screen. Store as fractions of the
+		 * context so the layout survives any resolution / vid_conwidth. */
+		const float dp_ratio = (g_hud.height > 0) ? (g_hud.height / 480.0f) : 1.0f;
+		float fx = (g_hud.width > 0) ? (pos.x * dp_ratio) / (float)g_hud.width : 0.0f;
+		float fy = (g_hud.height > 0) ? (pos.y * dp_ratio) / (float)g_hud.height : 0.0f;
+		/* Keep widgets on-screen even if dragged past an edge. */
+		fx = (fx < 0.0f) ? 0.0f : (fx > 1.0f ? 1.0f : fx);
+		fy = (fy < 0.0f) ? 0.0f : (fy > 1.0f ? 1.0f : fy);
 		char line[128];
-		snprintf(line, sizeof(line), "pos %s %d %d\n", id.c_str(), (int)pos.x, (int)pos.y);
+		snprintf(line, sizeof(line), "pos %s %.5f %.5f\n", id.c_str(), fx, fy);
 		out += line;
 	}
 
@@ -294,9 +340,9 @@ void SaveLayout()
 		}
 	}
 
-	vfsfile_t* f = FS_OpenVFS(LAYOUT_FILE, (char*)"wb", FS_GAME_OS);
+	vfsfile_t* f = FS_OpenVFS(LayoutFile(), (char*)"wb", FS_GAME_OS);
 	if (!f) {
-		Com_Printf("RmlUI HUD: WARNING could not write %s\n", LAYOUT_FILE);
+		Com_Printf("RmlUI HUD: WARNING could not write %s\n", LayoutFile());
 		return;
 	}
 	VFS_WRITE(f, out.c_str(), (int)out.size());
@@ -309,7 +355,7 @@ void LoadLayout()
 		return;
 	}
 
-	vfsfile_t* f = FS_OpenVFS(LAYOUT_FILE, (char*)"rb", FS_ANY);
+	vfsfile_t* f = FS_OpenVFS(LayoutFile(), (char*)"rb", FS_ANY);
 	if (!f) {
 		return; // no saved layout yet
 	}
@@ -329,11 +375,16 @@ void LoadLayout()
 		}
 		const Rml::String line = text.substr(start, end - start);
 		char id[64];
-		int x = 0, y = 0;
-		if (sscanf(line.c_str(), "pos %63s %d %d", id, &x, &y) == 3) {
-			if (Rml::Element* el = g_hud.document->GetElementById(id)) {
-				ApplyElementPosition(el, (float)x, (float)y);
-				++applied;
+		float fx = 0.0f, fy = 0.0f;
+		if (sscanf(line.c_str(), "pos %63s %f %f", id, &fx, &fy) == 3) {
+			/* Fractions of the context. Legacy files stored absolute pixels
+			 * (values > 1); ignore those so they can't pin widgets off a
+			 * smaller screen - the element keeps its stylesheet position. */
+			if (fx >= 0.0f && fx <= 1.0f && fy >= 0.0f && fy <= 1.0f) {
+				if (Rml::Element* el = g_hud.document->GetElementById(id)) {
+					ApplyElementPosition(el, fx * (float)g_hud.width, fy * (float)g_hud.height);
+					++applied;
+				}
 			}
 		}
 		else if (sscanf(line.c_str(), "hide %63s", id) == 1) {
@@ -407,6 +458,7 @@ void EditorEnter()
 	Cvar_SetValue(&hud_newhudeditor, 2);
 	key_dest = key_hudeditor;
 	g_hud.document->SetClass("edit", true);
+	ezquake::rmlui::GameDataSetEditMode(true); // drives the edit panels via data-if
 	Com_Printf("RmlUI HUD: edit mode ON - drag elements with the mouse, ESC to leave\n");
 }
 
@@ -416,10 +468,11 @@ void EditorExit()
 	if (g_hud.document) {
 		g_hud.document->SetClass("edit", false);
 	}
+	ezquake::rmlui::GameDataSetEditMode(false);
 	SaveLayout();
 	Cvar_SetValue(&hud_newhudeditor, 1);
 	key_dest = key_game;
-	Com_Printf("RmlUI HUD: edit mode OFF (layout saved to %s)\n", LAYOUT_FILE);
+	Com_Printf("RmlUI HUD: edit mode OFF (layout saved to %s)\n", LayoutFile());
 }
 
 void StylePickerOpen()
@@ -483,6 +536,26 @@ static void HUD_RmlUi_Reload_f(void)
 	LoadHudDocument();
 }
 
+/* Recovery: wipe the current layout's saved positions, show every widget,
+ * and reload so the HUD returns to its stylesheet defaults. */
+static void HUD_RmlUi_Reset_f(void)
+{
+	if (!g_hud.initialized || !g_hud.context) {
+		Com_Printf("RmlUI HUD: not active (enable hud_newhudeditor 1 in a game)\n");
+		return;
+	}
+	/* Truncate the per-document layout file (opening "wb" empties it). */
+	if (vfsfile_t* f = FS_OpenVFS(LayoutFile(), (char*)"wb", FS_GAME_OS)) {
+		VFS_CLOSE(f);
+	}
+	const int n = ezquake::rmlui::GameDataWidgetCount();
+	for (int i = 0; i < n; ++i) {
+		ezquake::rmlui::GameDataSetWidgetHidden(ezquake::rmlui::GameDataWidgetIdAt(i), false);
+	}
+	LoadHudDocument();
+	Com_Printf("RmlUI HUD: layout reset to defaults (%s)\n", LayoutFile());
+}
+
 static void HUD_RmlUi_Edit_f(void)
 {
 	if (EditorModeEnabled()) {
@@ -543,6 +616,7 @@ void HUD_RmlUi_Init(void)
 	Cvar_ResetCurrentGroup();
 
 	Cmd_AddCommand("hud_newhudeditor_reload", HUD_RmlUi_Reload_f);
+	Cmd_AddCommand("hud_newhudeditor_reset", HUD_RmlUi_Reset_f);
 	Cmd_AddCommand("hud_newhudeditor_edit", HUD_RmlUi_Edit_f);
 	Cmd_AddCommand("hud_newhudeditor_style", HUD_RmlUi_Style_f);
 
@@ -613,6 +687,18 @@ void HUD_RmlUi_Frame(double dt)
 	}
 
 	EnsureContext();
+
+	/* Apply a layout-preset switch requested from the picker last frame.
+	 * The model (edit/picker state, iconsets) persists across the reload, so
+	 * the new document comes up showing whatever overlay was open. */
+	if (!g_pending_doc.empty()) {
+		if (g_pending_doc != (hud_newhudeditor_doc.string ? hud_newhudeditor_doc.string : "")) {
+			Cvar_Set(&hud_newhudeditor_doc, (char*)g_pending_doc.c_str());
+			LoadHudDocument();
+		}
+		g_pending_doc.clear();
+	}
+
 	if (g_hud.context) {
 		g_hud.context->Update();
 	}
@@ -718,6 +804,27 @@ void HUD_RmlUi_EditorKey(int key, int unichar, int down)
 			}
 			else {
 				EditorExit();
+			}
+			break;
+		/* Style picker: arrows move the highlight (live preview), Enter
+		 * applies. Player picks a HUD skin without touching the mouse. */
+		case K_UPARROW:
+		case K_LEFTARROW:
+			if (g_editor.picker_open) {
+				ezquake::rmlui::GameDataPickerMove(-1);
+			}
+			break;
+		case K_DOWNARROW:
+		case K_RIGHTARROW:
+			if (g_editor.picker_open) {
+				ezquake::rmlui::GameDataPickerMove(+1);
+			}
+			break;
+		case K_ENTER:
+		case KP_ENTER:
+			if (g_editor.picker_open) {
+				ezquake::rmlui::GameDataPickerApplySelected();
+				StylePickerClose();
 			}
 			break;
 		case K_MWHEELUP:

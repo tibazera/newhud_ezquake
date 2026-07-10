@@ -39,6 +39,15 @@ bool GameDataStylePickerOpen();
 void GameDataPreviewIconset(const char* path); // hover: temporary override
 void GameDataEndPreviewIconset();              // hover out: back to the cvar
 
+// Keyboard navigation of the style picker: move the highlighted set
+// (dir -1/+1, live preview) and apply the highlighted set to the cvar.
+void GameDataPickerMove(int dir);
+void GameDataPickerApplySelected();
+
+// Edit-mode flag exposed to the model so panels show via data-if
+// (more reliable than a document CSS class).
+void GameDataSetEditMode(bool on);
+
 // Widget config (edit mode): per-widget show/hide. State persists across
 // document reloads (kept outside the bound model).
 void GameDataToggleWidget(const char* id);

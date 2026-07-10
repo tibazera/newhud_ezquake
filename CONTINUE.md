@@ -16,23 +16,33 @@ hud_newhudeditor 1
 This name is important. Use it everywhere when referring to the new system so
 there is no ambiguity with the old `hud_editor` and classic HUD cvars.
 
-## Status Summary (2026-07-09)
+## Status Summary (atualizado 2026-07-09, tarde)
 
-The CONTINUE.md roadmap **steps 1-7 are done and VISUALLY CONFIRMED ON SCREEN**
-(2026-07-09). The client builds, links, and renders a live RmlUI HUD inside
-ezQuake.
+Roadmap 1-7 concluído e o sistema evoluiu MUITO além disso. Estado atual,
+CONFIRMADO EM JOGO pelo usuário ("tá tudo funcionando agora, parabéns"):
 
-- `USE_RMLUI=ON` builds `ezquake.exe` with RmlUi 6.2 statically linked.
-- Verified on the user's machine (E:\trabalho\quake, map "Introduction"): the
-  minimal document draws bottom-left with a rounded translucent panel, correct
-  premultiplied-alpha blending, LatoLatin text, and LIVE data - the RmlUI panel
-  showed "HP 100 / AM 22" matching the classic HUD's independent 100/22,
-  proving SyncGameState -> "hud" data model -> document binding end to end.
-- KNOWN COSMETIC ISSUE: the classic/new HUD still draws underneath. Our
-  `hud_newhudeditor 1` only early-returns from `HUD_Draw()` (sbar path) in
-  `hud.c`; the bottom HUD elements come from `SCR_DrawNewHudElements()` /
-  `SCR_DrawElements()` in `cl_screen.c`, which we do not gate yet. Gate those on
-  `!HUD_RmlUi_ShouldDrawClassicHud()` to show the new HUD alone.
+- `USE_RMLUI=ON` builda `ezquake.exe` (RmlUi 6.2 estático). HUD RmlUi renderiza
+  ao vivo em partida, no espaço conwidth/conheight (bate com o cursor do mouse).
+- **HUD completo** com ícones clássicos extraídos dos paks (162 TGA em
+  `id1/ui/rml/hud/icons/`). Assets DEVEM ficar dentro do gamedir id1 (ver seção
+  do fix de ícones) — a raiz não é procurada pelo `R_LoadImagePixels`.
+- **Dois layouts selecionáveis:** `hud.rml` (Clássico: rosto + dígitos LCD) e
+  `hud_print.rml` (Competitivo: números grandes coloridos, baseado no
+  printquake.png). Trocáveis pelo style picker.
+- **Style picker** (`hud_newhudeditor_style`): seção LAYOUT + CONJUNTO DE ÍCONES;
+  navegação por setas + Enter (preview ao vivo), ou mouse; centralizado com
+  `left:50%`+margin negativa. Cursor visível (fix de ordem de desenho).
+- **Editor** (`hud_newhudeditor_edit`): arrasta cada widget; painel liga/desliga
+  elementos; layout salvo POR DOCUMENTO em frações resolução-independentes.
+- **`hud_newhudeditor_reset`**: recupera para os padrões (limpa layout + mostra tudo).
+- **Kill feed editável** (w_deaths) alimentado pelo tracker; rosto e barra de
+  armas presentes nos dois layouts.
+- Cvars persistem via cfg_save (CVAR_GROUP_HUD): `hud_newhudeditor_doc`,
+  `hud_newhudeditor_iconset`.
+
+Histórico detalhado de cada fix está nas seções datadas no fim do arquivo.
+PRÓXIMO: refinar composição do Competitivo vs printquake.png e o formato do kill
+feed — precisa de screenshot do usuário (HUD só renderiza em jogo, ver Warnings).
 
 ## Important Local Paths
 
@@ -589,4 +599,126 @@ Accept: the old hud_editor can be retired.
   the scaffold commit. Check `git log --oneline -8` before continuing.
 - `src/qwprot` and `vcpkg` are untracked reconstructed submodules - do not
   `git add` them as plain directories; restore proper submodule links instead.
+- **O HUD/picker RmlUi só renderiza DENTRO de partida (ca_active).** O contexto
+  só é criado quando conectado; desconectado/menu não desenha (screenshot sai
+  preto). A instalação de teste não tem servidor QW/progs (`map start` falha sem
+  qwprogs), então NÃO dá pra renderizar/screenshot localmente. Antes de iterar em
+  QUALQUER layout visual, PEDIR screenshot ao usuário (F12 →
+  `qw/matchinfo/screenshots/`). Editar CSS às cegas já causou várias regressões.
+- Deploy de assets: todo edit em `ui/` vai para `E:\trabalho\quake\id1\ui\` (e
+  raiz por segurança): `cp -r <repo>/ui/. /e/trabalho/quake/id1/ui/`.
 ```
+
+## 2026-07-09 — FIX: ícones sumiam com cfg do player ("só fica o relógio")
+
+**Sintoma:** com `kilnovo.cfg` carregado, só o relógio aparecia (único widget de texto puro; todos os outros usam ícones).
+
+**Causa raiz:** `R_LoadImagePixels` (carregador de imagem do ezQuake) só procura **dentro dos gamedirs** (id1/qw) + home, NÃO na raiz do Quake. Os ícones default (`ui/rml/hud/icons/`) estavam em `E:\trabalho\quake\ui` (raiz) → inalcançáveis pelo FS. RML/fontes carregavam pelo fallback stdio (cwd) do FileInterfaceVFS, mas ícones não têm esse fallback. Quando `kilnovo` roda `cfg_load`, reseta `hud_newhudeditor_iconset` pro default (pasta da raiz) → nenhum ícone carrega.
+
+**Correção (só assets, sem recompilar):**
+- Copiada a árvore `ui/` para `E:\trabalho\quake\id1\ui\` (gamedir sempre no search path do FS).
+- Sincronizadas ambas as cópias (id1/ui e raiz/ui) com a versão mais recente do repo — a cópia deployada estava DESATUALIZADA (hud.rml antigo, não o resolução-independente).
+- Path primário em LoadTexture já faz strip do `/` inicial → `ui/rml/hud/icons/X` → agora resolve em `id1/ui/...`. Fallback (linha 421-423) idem.
+
+**IMPORTANTE p/ deploys futuros:** todo edit em `ui/` (rml/rcss/icons) deve ser deployado para `E:\trabalho\quake\id1\ui\` (e raiz por segurança). Comando: `cp -r <repo>/ui/. /e/trabalho/quake/id1/ui/`.
+
+**PENDENTE:** usuário testar com kilnovo carregado — verificar se ícones aparecem e drag funciona no conwidth 640.
+
+## 2026-07-09 — Editor via data-if + navegação por teclado no style picker
+
+**Feedback:** "melhor mas style desconfigurado / editor não mostra nada / quero setas+Enter no seletor".
+
+**Mudanças:**
+1. **Painéis de edição por data-if (confiável):** `#configpanel` e `#edithint` agora aparecem via `data-if="editmode"` (mesmo mecanismo do model que já renderiza os widgets), em vez de depender do seletor CSS `body.edit`. Novo campo model `editmode` (bool), setado por `GameDataSetEditMode()` em EditorEnter/Exit. `body.edit .widget` (bordas) mantido como reforço cosmético.
+2. **Style picker refeito como LISTA VERTICAL** (era grid de cards inline que estourava = "desconfigurado"). Cada linha: nome + mini-preview (num_1/num_2/armor2/shells/quad) + "em uso".
+3. **Navegação por teclado:** setas ↑↓/←→ movem o destaque (com PREVIEW ao vivo do HUD inteiro), Enter aplica e fecha, ESC fecha. Model: `picker_sel` (path destacado), funcs `GameDataPickerMove(dir)` / `GameDataPickerApplySelected()`. Handler em `HUD_RmlUi_EditorKey` (K_UPARROW/K_DOWNARROW/K_LEFTARROW/K_RIGHTARROW/K_ENTER/KP_ENTER). Mouse (hover=preview, click=aplica) continua funcionando.
+
+Build verde; exe + ui deployados (id1/ui e raiz). PENDENTE: usuário testar `hud_newhudeditor_style` (setas+Enter) e `hud_newhudeditor_edit` (painel aparece + arrastar).
+
+## 2026-07-09 — FIX crítico: layout salvo em espaço de coord antigo escondia os widgets
+
+**Descoberta:** `qw/rmlui_hud_layout.cfg` tinha posições ABSOLUTAS em pixels de uma resolução antiga (X até 940, Y até 506). Aplicado no load do documento (ApplyElementPosition), fixava quase todos os widgets FORA da tela de 640×360 (conwidth do kilnovo). Só `w_clock` (427,141) e poucos caíam dentro → **este era o motivo real de "só o relógio" e de "somem todos os itens no edit"** (não só o path dos ícones).
+
+**Correções:**
+1. Apagados todos os `rmlui_hud_layout.cfg` obsoletos.
+2. **SaveLayout/LoadLayout agora fracionário** (posições como fração de conwidth/conheight, `%.5f`), resolução-independente. LoadLayout ignora valores >1 (formato legado em pixels) pra nunca mais empurrar widget pra fora.
+3. **Centralização sem transform** (translateX/Y(-50%) não estava aplicando no RmlUi): `#stylepicker` via `left:0;right:0;margin:auto`; `#edithint` full-width text-center; `#w_weapons` full-width text-center; `#configpanel` top fixo. Removida classe `.center` do w_weapons.
+
+Build verde; exe + ui deployados. PENDENTE testar: HUD completo aparecendo (todos os widgets on-screen), picker centralizado, edit mostrando widgets+painel e arrastar salvando fracionário.
+
+## 2026-07-09 — Layout "Competitivo" selecionável (baseado no printquake.png)
+
+Usuário colou `E:\trabalho\quake\printquake.png` (HUD clássico competitivo KTX de QW) como referência. Composição: kill feed (topo-esq), team overlay (esq), placar+timer (topo-centro), scoreboard por time (direita) — tudo engine clássico; base-centro = números GRANDES coloridos (armadura vermelha, vida verde `+100`, munição c/ ícone), ícone da arma ativa acima, grade 2×2 de munição.
+
+**Entregue:**
+- **`ui/rml/hud/hud_print.rml`** — layout "Competitivo": números grandes coloridos (`.bignum` 46dp), armadura colorida por tipo (ga/ya/ra), vida com `+` verde e cor por quantidade (mega/low), munição ícone+valor, arma ativa (inv2_*), grade de munição. Cada número é widget arrastável separado (w_armor/w_health/w_ammo/w_curweapon/w_ammocounts). Overlays clássicos continuam do engine.
+- **Seleção de layout no picker:** model ganhou `layouts` (Clássico=hud.rml, Competitivo=hud_print.rml) + `layoutpath` (doc atual, p/ highlight). Picker (nos dois docs) agora tem seção "LAYOUT" no topo + "CONJUNTO DE ÍCONES" embaixo. Clicar num layout troca `hud_newhudeditor_doc`.
+- **Troca de doc segura:** clique seta `g_pending_doc`; aplicado no início do `HUD_RmlUi_Frame` (Cvar_Set + LoadHudDocument), NUNCA no meio do dispatch do evento (evitaria unload do doc durante o próprio clique). Model (edit/picker/iconsets) persiste, então o novo doc já sobe com o picker aberto.
+- `hud_newhudeditor_doc` externado no header p/ o model ler o doc atual.
+
+Build verde; exe + ui + hud_print.rml deployados. PENDENTE testar: `hud_newhudeditor_style` → seção LAYOUT → clicar "Competitivo" → HUD vira números grandes; conferir cores/posições vs printquake.png e ajustar.
+
+## 2026-07-09 — Diagnóstico "parou tudo" + FIX matemática do save fracionário
+
+**Diagnóstico via -condebug (qconsole.log em qw/):** rodei o jogo eu mesmo. Log provou:
+- `hud.rml` E `hud_print.rml` carregam SEM erro ("loaded document ...").
+- Model criado sem erro. Fontes OK. => código base NÃO está quebrado.
+- Achei a causa real: arquivo `qw/rmlui_hud_layout.cfg` com frações > 1 (`w_speed 1.392`, `w_face 1.319`), gerado pelo meu save fracionário BUGADO.
+
+**Bug do save:** `GetAbsoluteOffset` retorna coordenadas em **dp** (density-independent), mas eu dividia por dimensões em **px físico** → fração inflada por 1/dp_ratio (ex. 1.33× em conheight 360) → passa de 1 → LoadLayout pula (ou empurra) o widget → some da tela. Como o arquivo acumulou saves de vários builds/resoluções, ficou totalmente corrompido.
+
+**Correções:**
+- SaveLayout agora converte dp→px físico ANTES da fração: `fx = (pos.x * dp_ratio) / width`, `dp_ratio = height/480`. Clamp [0,1] pra manter on-screen.
+- Apagado o `rmlui_hud_layout.cfg` corrompido (todas as cópias) na instalação do usuário.
+- LoadLayout mantém guarda: ignora valores fora de [0,1] (legado px/bugado).
+
+**NÃO reproduzível localmente:** o mapa `start` não sobe sem qwprogs.qvm (sem mod/progs/demos na instalação), então não consegui screenshot da HUD ao vivo — o usuário joga em servidor. Log é a evidência.
+
+Build verde; exe + ui deployados; layout corrompido apagado. PENDENTE: usuário **reiniciar do zero** (doc volta pro default hud.rml, sem layout salvo) e testar no servidor. Se persistir "nada aparece" ao vivo, próximo passo = logar contagem de draw calls do RmlUi por frame pra ver se renderiza.
+
+## 2026-07-09 — Style picker recompactado (cortado/desarmonizado)
+
+Feedback do usuário: "voltou a funcionar, só a tela do modelo dos huds corta tudo, desarmonizado".
+
+**Causa raiz:** o container usava `width:440dp` fixo + `max-width:86%` + `margin:auto`, e cada linha de iconset amontoava name(32%) + prev(múltiplas imgs 20×25dp) + scur na MESMA LINHA — em conwidth pequeno estourava e cortava. `max-height:86%` do body deixava a parte inferior fora da área visível.
+
+**Correção (RCSS-only, nos dois documentos):**
+- Container agora é `top:8%; bottom:8%; left:12%; right:12%` — sempre proporcional à tela, nunca corta.
+- Cada iconset row virou **duas linhas** (nome em cima, preview embaixo) em vez de tentar caber tudo horizontalmente.
+- Fontes e imagens reduzidas (18/13/11dp; icons 16×20dp) pra caber mais em telas pequenas.
+- Padding e margens apertadas.
+
+Sem recompilar (RCSS-only); RML deployado nos dois locais (id1/ui e raiz).
+
+## 2026-07-09 — Picker OK + FIX cursor invisível no editor/picker
+
+Usuário confirmou (com screenshot ezquake000.jpg, HUD ao vivo funcionando): style picker OK depois de reescrever com a técnica `left:50% + margin-left:-140dp` (mesma da sbar). Picker agora minimalista: caixa 280dp centralizada, tudo empilhado, só texto, classe única `.row` pra layout+iconsets. Sem `%`/`margin:auto`/`right`/`bottom` (era o que quebrava).
+
+**Cursor invisível — causa:** ordem de desenho. `SCR_DrawCursor()` roda dentro de `SCR_DrawElements()`, e o `HUD_RmlUi_Render()` desenha DEPOIS (cl_screen.c ~1038) → o painel do picker (fundo semi-opaco) cobre o cursor.
+
+**Fix:** em `SCR_UpdateScreenHudOnly`, após `HUD_RmlUi_Render()`, se `HUD_RmlUi_InEditorMode()`, redesenha `SCR_DrawCursor()` + `R_FlushImageDraw()` — cursor por cima do RmlUi. scr_pointer_state já está em conwidth (bate com onde o RmlUi acha o mouse).
+
+Build verde; exe deployado. PENDENTE: usuário testar cursor no `hud_newhudeditor_style` e `hud_newhudeditor_edit`.
+
+### Nota de processo (importante)
+Não consigo renderizar o HUD/picker localmente: contexto RmlUi só é criado em jogo (ca_active), e a instalação não tem servidor QW/progs pra subir mapa (`map start` falha sem qwprogs). Editar CSS às cegas causou várias regressões. REGRA: pedir screenshot ao usuário (F12 → qw/matchinfo/screenshots/) antes de iterar em layout visual do HUD.
+
+## 2026-07-09 — Layout por documento + comando de reset
+
+Avançando no que dá pra fazer sem ver a tela (lógica pura, sem ajuste visual):
+
+1. **Layout por documento:** `LAYOUT_FILE` fixo virou `LayoutFile()`, que deriva o nome do doc atual — `rmlui_layout_hud.cfg` (Clássico) e `rmlui_layout_hud_print.cfg` (Competitivo). Antes os dois layouts compartilhavam um arquivo → arrastar num vazava posições pro outro. Agora cada layout tem posições independentes. Órfão `rmlui_hud_layout.cfg` apagado.
+
+2. **`hud_newhudeditor_reset`** (comando novo): esvazia o arquivo de layout do doc atual, mostra todos os widgets, recarrega → HUD volta pros padrões do RCSS. Recuperação rápida se o layout ficar bagunçado (dado o histórico de dores com isso).
+
+Build verde; exe deployado. Cursor no editor/picker AGUARDANDO teste do usuário (fix da ordem de desenho da mensagem anterior).
+
+## 2026-07-09 — Kill feed editável + rosto/armas no Competitivo
+
+Feedback: "faltam elementos no hud editor — rosto, armas, informação de morte de forma clara".
+
+1. **Kill feed como widget editável (w_deaths):** nova função `VX_TrackerExportLine(index, buf, size)` em vx_tracker.c lê as mensagens ativas do tracker (mortes, armazenadas independente de r_tracker; imagens de arma viram " >> "). Model ganhou vetor `deaths` (até 8 linhas), populado no ReadEngineState, bind "deaths". Widget `#w_deaths` (canto sup. esq., vermelho) nos DOIS layouts. Adicionado ao WIDGET_DEFS ("Mortes (kill feed)"). Notify separado agora é só "Mensagens / chat".
+2. **Tracker clássico gateado:** `VX_TrackerThink` só DESENHA o tracker clássico se `HUD_RmlUi_ShouldDrawClassicHud()` (senão duplicaria com nosso widget). Armazenamento/expiração continua rodando, alimentando o widget.
+3. **Competitivo completo:** removido w_curweapon (só arma ativa), adicionada **barra de armas completa** (w_weapons, destaca a ativa) + **rosto** (w_face) + kill feed. Agora bate com o catálogo do editor.
+
+Build verde; exe + RML deployados. PENDENTE testar em jogo: kill feed aparecendo ao matar/morrer, rosto e barra de armas no Competitivo, todos arrastáveis no editor. Pedir screenshot pra ajustar posição/estilo do kill feed.

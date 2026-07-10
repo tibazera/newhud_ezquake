@@ -1037,6 +1037,14 @@ void SCR_UpdateScreenHudOnly(void)
 #ifdef USE_RMLUI
 			HUD_RmlUi_Frame(cls.frametime);
 			HUD_RmlUi_Render();
+			/* The mouse cursor was drawn inside SCR_DrawElements, i.e. UNDER
+			 * the RmlUi HUD - so the style picker / edit panels hide it. In
+			 * editor/picker mode redraw it on top so the player can see what
+			 * they are clicking/dragging. */
+			if (HUD_RmlUi_InEditorMode()) {
+				SCR_DrawCursor();
+				R_FlushImageDraw();
+			}
 #endif
 		}
 		R_TraceLeaveNamedRegion();
