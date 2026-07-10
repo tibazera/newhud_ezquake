@@ -1,6 +1,6 @@
 # Continue: ezQuake RmlUI HUD Port
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Current Objective
 
@@ -722,3 +722,45 @@ Feedback: "faltam elementos no hud editor — rosto, armas, informação de mort
 3. **Competitivo completo:** removido w_curweapon (só arma ativa), adicionada **barra de armas completa** (w_weapons, destaca a ativa) + **rosto** (w_face) + kill feed. Agora bate com o catálogo do editor.
 
 Build verde; exe + RML deployados. PENDENTE testar em jogo: kill feed aparecendo ao matar/morrer, rosto e barra de armas no Competitivo, todos arrastáveis no editor. Pedir screenshot pra ajustar posição/estilo do kill feed.
+
+## 2026-07-10 — Layouts novos (Brutalist/Minimal/Visor) do repo + fix de edição/resize
+
+Após puxar do `origin/feat` os 2 commits do tibazera (kill feed/competitivo + os 3
+layouts novos Brutalist/Minimal/Visor), rodada de correção dos layouts novos que
+não deixavam editar/arrastar nem voltar pros outros pelo picker.
+
+**Causa raiz (input morto nos layouts novos):** eram os ÚNICOS layouts com
+dependências externas herdadas do vkQuake, e cada um quebrava o input de um jeito:
+- **Brutalist** carregava `<link>` p/ `base.rcss` + `hud.rcss` (reset global,
+  `div{display:block}`, `font-effect:outline`, propriedades `reticle-*`
+  desconhecidas). O picker não recebia clique e o drag não pegava → "fica fixo".
+- **Visor** tinha `body.visor-hud { pointer-events: none }` no `visor_hud.rcss`,
+  que DESLIGA todo o input do documento (nem drag nem clique no picker).
+- Prova: existia `rmlui_layout_hud.cfg`/`_hud_print`/`_hud_visor` mas NENHUM
+  `_hud_brutalist.cfg` — o SaveLayout do editor nunca chegou a rodar no Brutalist.
+
+**Correções:**
+1. **hud_brutalist.rml** — reescrito autossuficiente (0 `<link>`, CSS inline),
+   estrutura do `<body>` IDÊNTICA ao hud.rml (só cores diferem: preto/vermelho +
+   Space Grotesk). Diff do body vs hud.rml = 1 palavra num comentário.
+2. **minimal.rml** — era um `#panel` monolítico (id não-`w_`, o editor só arrasta
+   ids `w_*`). Renomeado `panel`→`w_panel` (painel inteiro vira 1 widget
+   arrastável); posições px→% (resolução-independente); realce de edição.
+3. **hud_visor.rml** — reescrito autossuficiente (sem `pointer-events:none`, CSS
+   inline), blocos viraram widgets `w_*` top-level arrastáveis; brackets/crosshair
+   ficam fixos; paletas por tier de vida/powerup mantidas.
+4. **RESIZE por alça de canto (novo, hud_rmlui.cpp):** cada widget do Visor tem
+   uma alça `.rgrip` (canto ↘, só no edit). Puxá-la escala o widget via
+   `transform: scale()` com origin top-left. Detecção pela CLASSE da alça sob o
+   cursor (`IsOnResizeGrip`), não por geometria → imune à ambiguidade dp/px.
+   Escala salva por widget/por documento (linhas `scale <id> <f>` no layout cfg,
+   lidas ANTES das `pos` pra ApplyElementPosition já emitir o transform).
+   `g_widget_scale` limpo ao trocar de doc. Resize só no Visor por ora (as alças
+   só existem lá); adicionar aos outros é 1 `<span class="rgrip">` por widget.
+
+Build verde; exe + RML deployados (id1/ui + raiz); `rmlui_layout_hud_visor.cfg`
+antigo (2 widgets) apagado. PENDENTE testar em jogo: Brutalist/Minimal/Visor
+arrastáveis + voltar pros outros pelo picker; alça de resize no Visor. Limitação
+conhecida: o painel show/hide usa a lista global de widgets (ids clássicos), então
+no Visor só alterna os comuns (vida/armadura/kill feed/mensagens/avisos) — drag e
+resize funcionam em todos os blocos. Pedir screenshot pra calibrar posições/tamanho.
